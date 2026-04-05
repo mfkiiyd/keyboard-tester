@@ -6,6 +6,7 @@
     <title>键盘延迟测试系统</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <style>
         :root {
             --primary: #3a86ff;
@@ -61,12 +62,6 @@
             margin: 0;
         }
         
-        .header .subtitle {
-            color: var(--gray);
-            font-size: 0.85rem;
-            margin-top: 2px;
-        }
-        
         .header-right {
             display: flex;
             align-items: center;
@@ -77,16 +72,6 @@
         .device-info {
             color: var(--gray);
             text-align: right;
-        }
-        
-        .device-info div {
-            margin: 2px 0;
-        }
-        
-        .connection-status {
-            display: flex;
-            align-items: center;
-            gap: 10px;
         }
         
         .status-indicator {
@@ -143,7 +128,6 @@
             font-size: 0.9rem;
         }
         
-        /* 配置与控制区域 - 新布局 */
         .config-control-wrapper {
             display: grid;
             grid-template-columns: 1fr 1.8fr;
@@ -154,21 +138,22 @@
         .config-section {
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
             height: 100%;
-            padding: 15px 0;
-        }
-        
-        .config-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
+            gap: 16px;
         }
         
         .config-row-3 {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
             gap: 12px;
+            margin-top: 8px;
+        }
+        
+        .config-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 8px;
         }
         
         .config-group {
@@ -189,25 +174,14 @@
             border: 1px solid #e9ecef;
             border-radius: 6px;
             font-size: 0.9rem;
-            transition: border-color 0.3s;
             width: 100%;
             height: 36px;
-        }
-        
-        .config-input:focus {
-            outline: none;
-            border-color: var(--primary);
         }
         
         .config-input:disabled {
             background-color: #f5f5f5;
             color: #999;
             cursor: not-allowed;
-        }
-        
-        .config-input.invalid {
-            border-color: var(--danger);
-            background-color: #fff5f5;
         }
         
         .input-hint {
@@ -219,11 +193,46 @@
             gap: 4px;
         }
         
-        .input-hint i {
-            font-size: 0.7rem;
+        .control-buttons-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 8px;
         }
         
-        /* 键盘区域标题栏 */
+        .progress-container {
+            margin-top: auto;
+            padding-top: 16px;
+        }
+        
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 0.85rem;
+            color: var(--gray);
+        }
+        
+        .progress-bar {
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            transition: width 0.3s ease;
+            border-radius: 4px;
+        }
+        
+        .keyboard-section {
+            margin: 0;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        
         .keyboard-header {
             display: flex;
             justify-content: space-between;
@@ -231,6 +240,7 @@
             margin-bottom: 12px;
             flex-wrap: wrap;
             gap: 10px;
+            margin-top: 4px;
         }
         
         .keyboard-title {
@@ -240,7 +250,6 @@
             white-space: nowrap;
         }
         
-        /* 按键模式选择 */
         .key-mode-selector {
             display: flex;
             gap: 15px;
@@ -265,14 +274,6 @@
             color: var(--dark);
             cursor: pointer;
             white-space: nowrap;
-        }
-        
-        /* 键盘区域 */
-        .keyboard-section {
-            margin: 0;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
         }
         
         .keyboard-container {
@@ -330,30 +331,6 @@
             pointer-events: none;
         }
         
-        .key-btn.wide {
-            flex: 1.5;
-        }
-        
-        .key-btn.x-wide {
-            flex: 2;
-        }
-        
-        .key-btn.xx-wide {
-            flex: 2.5;
-        }
-        
-        .key-btn.xxx-wide {
-            flex: 3.5;
-        }
-        
-        /* 控制按钮 */
-        .control-buttons {
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
-            grid-column: 1 / -1;
-        }
-        
         .btn {
             padding: 12px 20px;
             border: none;
@@ -361,22 +338,12 @@
             font-size: 0.95rem;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s;
             display: flex;
             align-items: center;
             gap: 8px;
             flex: 1;
             justify-content: center;
-        }
-        
-        .btn-primary {
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 3px 8px rgba(58, 134, 255, 0.2);
+            transition: all 0.3s;
         }
         
         .btn-success {
@@ -399,6 +366,16 @@
             box-shadow: 0 3px 8px rgba(255, 0, 110, 0.2);
         }
         
+        .btn-secondary {
+            background: linear-gradient(135deg, var(--gray), #5a6268);
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 8px rgba(108, 117, 125, 0.2);
+        }
+        
         .btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
@@ -406,46 +383,40 @@
             box-shadow: none !important;
         }
         
+        .btn-connect {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 0 20px;
+            height: 40px;
+            border-radius: 40px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: none;
+            white-space: nowrap;
+        }
+        
+        .btn-connect:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 8px rgba(58, 134, 255, 0.3);
+        }
+        
+        .btn-connect:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
         .connection-buttons {
             display: flex;
             gap: 8px;
+            align-items: center;
         }
         
-        .btn-small {
-            padding: 6px 10px;
-            font-size: 0.8rem;
-            flex: none;
-        }
-        
-        /* 进度条 */
-        .progress-container {
-            margin: 10px 0;
-            grid-column: 1 / -1;
-        }
-        
-        .progress-label {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 5px;
-            font-size: 0.85rem;
-            color: var(--gray);
-        }
-        
-        .progress-bar {
-            height: 8px;
-            background: #e9ecef;
-            border-radius: 4px;
-            overflow: hidden;
-        }
-        
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, var(--primary), var(--secondary));
-            transition: width 0.3s ease;
-            border-radius: 4px;
-        }
-        
-        /* 统计卡片 */
         .stats-cards {
             display: grid;
             grid-template-columns: repeat(8, 1fr);
@@ -460,6 +431,11 @@
             text-align: center;
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
             border: 1px solid #f0f0f0;
+            transition: transform 0.2s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-2px);
         }
         
         .stat-card.press {
@@ -471,10 +447,13 @@
         }
         
         .stat-value {
-            font-size: 1.1rem;
+            font-size: 1.2rem;
             font-weight: bold;
-            color: var(--primary);
             margin-bottom: 3px;
+        }
+        
+        .stat-card.press .stat-value {
+            color: var(--primary);
         }
         
         .stat-card.release .stat-value {
@@ -486,7 +465,6 @@
             font-size: 0.75rem;
         }
         
-        /* 图表区域 */
         .charts-container {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -509,11 +487,6 @@
             gap: 8px;
         }
         
-        .chart-title i {
-            color: var(--primary);
-            font-size: 0.8rem;
-        }
-        
         .press-chart .chart-title i {
             color: var(--primary);
         }
@@ -527,23 +500,13 @@
             height: 250px;
         }
         
-        /* 测试结果头部 */
-        .results-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-        
-        .results-count {
-            font-size: 0.85rem;
+        .chart-info {
+            font-size: 0.75rem;
             color: var(--gray);
-            white-space: nowrap;
+            margin-top: 8px;
+            text-align: center;
         }
         
-        /* 测试结果表格容器 - 修改为并排显示 */
         .results-tables-container {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -554,7 +517,6 @@
             background: #f8f9fa;
             padding: 12px;
             border-radius: 8px;
-            height: 100%;
         }
         
         .results-table-box h3 {
@@ -576,14 +538,14 @@
         
         .results-container {
             overflow-x: auto;
-            margin-top: 5px;
+            max-height: 300px;
+            overflow-y: auto;
         }
         
         .results-table {
             width: 100%;
             border-collapse: collapse;
             font-size: 0.85rem;
-            min-width: 400px;
         }
         
         .results-table th,
@@ -599,25 +561,8 @@
             color: var(--dark);
             position: sticky;
             top: 0;
-            font-size: 0.85rem;
         }
         
-        .results-table tbody tr:hover {
-            background: #f8f9fa;
-        }
-        
-        /* 事件类型样式 */
-        .event-press {
-            color: var(--primary);
-            font-weight: 600;
-        }
-        
-        .event-release {
-            color: var(--success);
-            font-weight: 600;
-        }
-        
-        /* 通知 */
         .notification {
             position: fixed;
             bottom: 15px;
@@ -641,37 +586,6 @@
             opacity: 1;
         }
         
-        .notification-success {
-            border-left: 3px solid var(--success);
-        }
-        
-        .notification-error {
-            border-left: 3px solid var(--danger);
-        }
-        
-        .notification-info {
-            border-left: 3px solid var(--primary);
-        }
-        
-        /* 调试面板 */
-        .debug-panel {
-            background: #1a1a1a;
-            color: #00ff00;
-            font-family: monospace;
-            padding: 10px;
-            border-radius: 6px;
-            margin-top: 10px;
-            font-size: 11px;
-            max-height: 150px;
-            overflow-y: auto;
-            display: none;
-        }
-        
-        .debug-line {
-            margin-bottom: 3px;
-        }
-        
-        /* 页脚 */
         .footer {
             text-align: center;
             color: var(--gray);
@@ -680,1599 +594,427 @@
             font-size: 0.8rem;
         }
         
-        /* 键盘容器滚动条样式 - 隐藏 */
-        .keyboard-container::-webkit-scrollbar {
-            display: none;
-        }
-        
-        .keyboard-container {
-            -ms-overflow-style: none;  /* IE and Edge */
-            scrollbar-width: none;  /* Firefox */
-        }
-        
-        /* 响应式设计 */
         @media (max-width: 1200px) {
-            .config-control-wrapper {
-                grid-template-columns: 1fr;
-                min-height: auto;
-            }
-            
-            .config-section {
-                padding: 10px 0;
-            }
-            
-            .keyboard-container {
-                height: 220px;
-            }
-            
-            .stats-cards {
-                grid-template-columns: repeat(4, 1fr);
-            }
-            
-            .charts-container {
-                grid-template-columns: 1fr;
-            }
-            
-            .results-tables-container {
-                grid-template-columns: 1fr;
-            }
+            .config-control-wrapper { grid-template-columns: 1fr; }
+            .stats-cards { grid-template-columns: repeat(4, 1fr); }
+            .charts-container { grid-template-columns: 1fr; }
+            .results-tables-container { grid-template-columns: 1fr; }
         }
         
         @media (max-width: 768px) {
-            .config-control-wrapper {
-                grid-template-columns: 1fr;
-            }
-            
-            .keyboard-container {
-                height: 200px;
-            }
-            
-            .keyboard-header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 8px;
-            }
-            
-            .key-mode-selector {
-                width: 100%;
-                justify-content: space-between;
-            }
-            
-            .stats-cards {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            
-            .control-buttons {
-                flex-direction: column;
-            }
-            
-            .header {
-                flex-direction: column;
-                gap: 10px;
-                align-items: flex-start;
-            }
-            
-            .header-right {
-                width: 100%;
-                justify-content: space-between;
-            }
-            
-            .config-row, .config-row-3 {
-                grid-template-columns: 1fr;
-                gap: 10px;
-            }
-            
-            .key-btn {
-                padding: 4px 6px;
-                min-width: 32px;
-                height: 32px;
-                font-size: 0.75rem;
-            }
-            
-            .results-header {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 10px;
-            }
-            
-            .results-count {
-                text-align: center;
-            }
-        }
-        
-        @media (max-width: 480px) {
-            .charts-container {
-                grid-template-columns: 1fr;
-            }
-            
-            .stat-card {
-                padding: 8px;
-            }
-            
-            .stat-value {
-                font-size: 0.9rem;
-            }
-            
-            .config-control-wrapper {
-                gap: 10px;
-            }
-            
-            .key-btn {
-                padding: 3px 5px;
-                min-width: 28px;
-                height: 28px;
-                font-size: 0.7rem;
-            }
-            
-            .keyboard-header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 8px;
-            }
-            
-            .key-mode-selector {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 8px;
-            }
+            .stats-cards { grid-template-columns: repeat(2, 1fr); }
+            .control-buttons-row { flex-direction: column; }
+            .config-row-3, .config-row { grid-template-columns: 1fr; }
+            .btn-connect { padding: 0 15px; height: 36px; font-size: 0.8rem; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- 头部 -->
-        <div class="header">
-            <div class="header-title">
-                <h1><i class="fas fa-keyboard"></i> 键盘延迟测试系统</h1>
-            </div>
-            <div class="header-right">
-                <div class="device-info">
-                    <div>状态: <span id="statusText">未连接</span> <span class="status-indicator" id="statusIndicator"></span></div>
-                    <div id="deviceInfo">未连接设备</div>
-                </div>
-                <div class="connection-buttons">
-                    <button id="connectBtn" class="btn btn-primary btn-small">
-                        <i class="fas fa-plug"></i> 连接
-                    </button>
-                </div>
+<div class="container">
+    <div class="header">
+        <div class="header-title"><h1><i class="fas fa-keyboard"></i> 键盘延迟测试系统</h1></div>
+        <div class="header-right">
+            <div class="device-info"><div>状态: <span id="statusText">未连接</span> <span class="status-indicator" id="statusIndicator"></span></div><div id="deviceInfo">未连接设备</div></div>
+            <div class="connection-buttons">
+                <button id="connectBtn" class="btn-connect" title="连接设备"><i class="fas fa-plug"></i> 连接设备</button>
             </div>
         </div>
-
-        <!-- 配置与控制 -->
-        <div class="card">
-            <h2 class="card-title"><i class="fas fa-cog"></i> 配置与控制</h2>
-            
-            <div class="config-control-wrapper">
-                <!-- 左侧：参数配置 -->
-                <div class="config-section">
-                    <div class="config-row-3">
-                        <div class="config-group">
-                            <label class="config-label">测试次数</label>
-                            <input type="number" id="totalTests" class="config-input" value="50" min="1" max="60000">
-                            <div class="input-hint"><i class="fas fa-info-circle"></i> 范围: 1 - 60000</div>
-                        </div>
-                        <div class="config-group">
-                            <label class="config-label">按下时间 (ms)</label>
-                            <input type="number" id="pressTime" class="config-input" value="10" min="1" max="60000">
-                            <div class="input-hint"><i class="fas fa-info-circle"></i> 范围: 1 - 60000</div>
-                        </div>
-                        <div class="config-group">
-                            <label class="config-label">间隔时间 (ms)</label>
-                            <input type="number" id="intervalTime" class="config-input" value="20" min="1" max="60000">
-                            <div class="input-hint"><i class="fas fa-info-circle"></i> 范围: 1 - 60000</div>
-                        </div>
-                    </div>
-                    
-                    <div class="config-row">
-                        <div class="config-group">
-                            <label class="config-label">触发类型</label>
-                            <select id="triggerType" class="config-input">
-                                <option value="0" selected>电平触发</option>
-                                <option value="1">电压触发</option>
-                            </select>
-                        </div>
-                        <div class="config-group">
-                            <label class="config-label">触发电压 (0.01mV)</label>
-                            <input type="number" id="triggerVoltage" class="config-input" value="0" min="0" max="330000" disabled>
-                            <div class="input-hint"><i class="fas fa-info-circle"></i> 范围: 0 - 330000</div>
-                        </div>
-                    </div>
-                    
-                    <div class="config-row">
-                        <div class="config-group">
-                            <label class="config-label">控制脚</label>
-                            <select id="relayPin" class="config-input">
-                                <option value="0">GPIO 0</option>
-                                <option value="1">GPIO 1</option>
-                                <option value="2">GPIO 2</option>
-                            </select>
-                        </div>
-                        <div class="config-group">
-                            <label class="config-label">有效电平</label>
-                            <!-- 修改：默认改为低电平有效 -->
-                            <select id="activeLevel" class="config-input">
-                                <option value="0" selected>低电平有效</option>
-                                <option value="1">高电平有效</option>
-                            </select>
-                        </div>
-                    </div>
+    </div>
+    <div class="card">
+        <h2 class="card-title"><i class="fas fa-cog"></i> 配置与控制</h2>
+        <div class="config-control-wrapper">
+            <div class="config-section">
+                <div class="config-row-3">
+                    <div class="config-group"><label class="config-label">测试次数</label><input type="number" id="totalTests" class="config-input" value="50" min="1" max="60000"><div class="input-hint"><i class="fas fa-info-circle"></i> 范围: 1-60000</div></div>
+                    <div class="config-group"><label class="config-label">按下时间 (ms)</label><input type="number" id="pressTime" class="config-input" value="10" min="1" max="60000"><div class="input-hint"><i class="fas fa-info-circle"></i> 范围: 1-60000</div></div>
+                    <div class="config-group"><label class="config-label">间隔时间 (ms)</label><input type="number" id="intervalTime" class="config-input" value="20" min="1" max="60000"><div class="input-hint"><i class="fas fa-info-circle"></i> 范围: 1-60000</div></div>
                 </div>
-                
-                <!-- 右侧：键盘按键选择 -->
-                <div class="keyboard-section">
-                    <!-- 键盘标题栏，包含标题和模式选择 -->
-                    <div class="keyboard-header">
-                        <div class="keyboard-title">
-                            选择测试按键
-                        </div>
-                        
-                        <!-- 按键模式选择 -->
-                        <div class="key-mode-selector">
-                            <div class="mode-option">
-                                <input type="radio" id="keyModeSpecific" name="keyMode" value="specific" checked>
-                                <label for="keyModeSpecific">指定按键</label>
-                            </div>
-                            <div class="mode-option">
-                                <input type="radio" id="keyModeAny" name="keyMode" value="any">
-                                <label for="keyModeAny">任意按键</label>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="keyboard-container" id="keyboardContainer">
-                        <!-- 键盘布局将通过JavaScript动态生成 -->
-                    </div>
+                <div class="config-row">
+                    <div class="config-group"><label class="config-label">键盘类型</label><select id="relayPin" class="config-input"><option value="0" selected>机械轴</option><option value="1">磁轴</option><option value="2">电感轴</option></select></div>
+                    <div class="config-group"><label class="config-label">有效电平</label><select id="activeLevel" class="config-input"><option value="0">低电平有效</option><option value="1" selected>高电平有效</option></select><div class="input-hint" id="activeLevelHint"><i class="fas fa-info-circle"></i> 机械轴/电感轴固定高电平有效</div></div>
                 </div>
-                
-                <!-- 控制按钮 -->
-                <div class="control-buttons">
-                    <button id="startWithConfigBtn" class="btn btn-success" disabled>
-                        <i class="fas fa-bolt"></i> 一键启动
-                    </button>
-                    <button id="stopTestBtn" class="btn btn-danger" disabled>
-                        <i class="fas fa-stop"></i> 停止测试
-                    </button>
+                <div class="control-buttons-row">
+                    <button id="startWithConfigBtn" class="btn btn-success" disabled><i class="fas fa-bolt"></i> 一键启动</button>
+                    <button id="stopTestBtn" class="btn btn-danger" disabled><i class="fas fa-stop"></i> 停止测试</button>
+                    <button id="exportDataBtn" class="btn btn-secondary"><i class="fas fa-download"></i> 导出XLS</button>
                 </div>
-                
-                <!-- 进度条 -->
                 <div class="progress-container">
-                    <div class="progress-label">
-                        <span>测试进度</span>
-                        <span id="progressText">0% (0/0)</span>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
-                    </div>
+                    <div class="progress-label"><span>测试进度</span><span id="progressText">0% (0/0)</span></div>
+                    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
                 </div>
             </div>
-        </div>
-
-        <!-- 统计与图表 -->
-        <div class="card">
-            <h2 class="card-title"><i class="fas fa-chart-bar"></i> 统计与图表</h2>
-            
-            <!-- 实时统计数据 -->
-            <div class="stats-cards">
-                <!-- 按下延迟统计 -->
-                <div class="stat-card press">
-                    <div class="stat-value" id="pressMax">0</div>
-                    <div class="stat-label">最大按下延迟 (us)</div>
-                </div>
-                <div class="stat-card press">
-                    <div class="stat-value" id="pressMin">0</div>
-                    <div class="stat-label">最小按下延迟 (us)</div>
-                </div>
-                <div class="stat-card press">
-                    <div class="stat-value" id="pressAvg">0</div>
-                    <div class="stat-label">平均按下延迟 (us)</div>
-                </div>
-                <div class="stat-card press">
-                    <div class="stat-value" id="pressCount">0</div>
-                    <div class="stat-label">按下测试次数</div>
-                </div>
-                
-                <!-- 释放延迟统计 -->
-                <div class="stat-card release">
-                    <div class="stat-value" id="releaseMax">0</div>
-                    <div class="stat-label">最大释放延迟 (us)</div>
-                </div>
-                <div class="stat-card release">
-                    <div class="stat-value" id="releaseMin">0</div>
-                    <div class="stat-label">最小释放延迟 (us)</div>
-                </div>
-                <div class="stat-card release">
-                    <div class="stat-value" id="releaseAvg">0</div>
-                    <div class="stat-label">平均释放延迟 (us)</div>
-                </div>
-                <div class="stat-card release">
-                    <div class="stat-value" id="releaseCount">0</div>
-                    <div class="stat-label">释放测试次数</div>
-                </div>
-            </div>
-            
-            <!-- 实时延迟曲线 -->
-            <div class="charts-container">
-                <div class="chart-box press-chart">
-                    <div class="chart-title">
-                        <i class="fas fa-hand-pointer"></i> 按下延迟曲线
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="pressChart"></canvas>
-                    </div>
-                    <div class="chart-info">
-                        <span>单位: 微秒 (us)</span>
-                        <span id="pressChartInfo">显示0个数据点</span>
-                    </div>
-                </div>
-                <div class="chart-box release-chart">
-                    <div class="chart-title">
-                        <i class="fas fa-hand-point-up"></i> 释放延迟曲线
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="releaseChart"></canvas>
-                    </div>
-                    <div class="chart-info">
-                        <span>单位: 微秒 (us)</span>
-                        <span id="releaseChartInfo">显示0个数据点</span>
-                    </div>
-                </div>
+            <div class="keyboard-section">
+                <div class="keyboard-header"><div class="keyboard-title">选择测试按键</div><div class="key-mode-selector"><div class="mode-option"><input type="radio" id="keyModeSpecific" name="keyMode" value="specific" checked><label for="keyModeSpecific">指定按键</label></div><div class="mode-option"><input type="radio" id="keyModeAny" name="keyMode" value="any"><label for="keyModeAny">任意按键</label></div></div></div>
+                <div class="keyboard-container" id="keyboardContainer"></div>
             </div>
         </div>
-
-        <!-- 测试结果 -->
-        <div class="card">
-            <h2 class="card-title">
-                <i class="fas fa-table"></i> 测试结果
-                <span style="margin-left: auto; font-size: 0.9rem; color: var(--gray);">
-                    当前测试: <span id="currentTestId">0</span> / <span id="totalTestsDisplay">50</span>
-                </span>
-            </h2>
-            
-            <!-- 结果计数 -->
-            <div class="results-header">
-                <div class="results-count">
-                    总记录数: <span id="totalResultsCount">0</span> 条
-                </div>
-            </div>
-            
-            <!-- 测试结果表格 - 分为按下和释放两个部分 -->
-            <div class="results-tables-container">
-                <!-- 按下结果 -->
-                <div class="results-table-box press">
-                    <h3><i class="fas fa-hand-pointer"></i> 按下结果</h3>
-                    <div class="results-container">
-                        <table class="results-table">
-                            <thead>
-                                <tr>
-                                    <th>测试ID</th>
-                                    <th>当前延迟 (us)</th>
-                                    <th>最大延迟 (us)</th>
-                                    <th>最小延迟 (us)</th>
-                                    <th>平均延迟 (us)</th>
-                                </tr>
-                            </thead>
-                            <tbody id="pressResultsBody">
-                                <tr>
-                                    <td colspan="5" style="text-align: center; color: var(--gray);">
-                                        暂无按下数据
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                
-                <!-- 释放结果 -->
-                <div class="results-table-box release">
-                    <h3><i class="fas fa-hand-point-up"></i> 释放结果</h3>
-                    <div class="results-container">
-                        <table class="results-table">
-                            <thead>
-                                <tr>
-                                    <th>测试ID</th>
-                                    <th>当前延迟 (us)</th>
-                                    <th>最大延迟 (us)</th>
-                                    <th>最小延迟 (us)</th>
-                                    <th>平均延迟 (us)</th>
-                                </tr>
-                            </thead>
-                            <tbody id="releaseResultsBody">
-                                <tr>
-                                    <td colspan="5" style="text-align: center; color: var(--gray);">
-                                        暂无释放数据
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+    </div>
+    <div class="card">
+        <h2 class="card-title"><i class="fas fa-chart-bar"></i> 统计与图表</h2>
+        <div class="stats-cards">
+            <div class="stat-card press"><div class="stat-value" id="pressMax">0</div><div class="stat-label">最大按下延迟 (us)</div></div>
+            <div class="stat-card press"><div class="stat-value" id="pressMin">0</div><div class="stat-label">最小按下延迟 (us)</div></div>
+            <div class="stat-card press"><div class="stat-value" id="pressAvg">0</div><div class="stat-label">平均按下延迟 (us)</div></div>
+            <div class="stat-card press"><div class="stat-value" id="pressCount">0</div><div class="stat-label">按下测试次数</div></div>
+            <div class="stat-card release"><div class="stat-value" id="releaseMax">0</div><div class="stat-label">最大释放延迟 (us)</div></div>
+            <div class="stat-card release"><div class="stat-value" id="releaseMin">0</div><div class="stat-label">最小释放延迟 (us)</div></div>
+            <div class="stat-card release"><div class="stat-value" id="releaseAvg">0</div><div class="stat-label">平均释放延迟 (us)</div></div>
+            <div class="stat-card release"><div class="stat-value" id="releaseCount">0</div><div class="stat-label">释放测试次数</div></div>
         </div>
-
-        <!-- 调试面板 -->
-        <div class="debug-panel" id="debugPanel">
-            <h4 style="color: white; margin-bottom: 10px;">调试信息</h4>
-            <div id="debugContent"></div>
+        <div class="charts-container">
+            <div class="chart-box press-chart"><div class="chart-title"><i class="fas fa-hand-pointer"></i> 按下延迟曲线</div><div class="chart-container"><canvas id="pressChart"></canvas></div><div class="chart-info"><span>单位: 微秒 (us)</span> <span id="pressChartInfo">显示0个数据点</span></div></div>
+            <div class="chart-box release-chart"><div class="chart-title"><i class="fas fa-hand-point-up"></i> 释放延迟曲线</div><div class="chart-container"><canvas id="releaseChart"></canvas></div><div class="chart-info"><span>单位: 微秒 (us)</span> <span id="releaseChartInfo">显示0个数据点</span></div></div>
         </div>
-
-        <!-- 通知 -->
-        <div class="notification" id="notification">
-            <i class="fas fa-info-circle"></i>
-            <span id="notificationText">测试消息</span>
+    </div>
+    <div class="card">
+        <h2 class="card-title"><i class="fas fa-table"></i> 测试结果 <span style="margin-left:auto; font-size:0.9rem; color:var(--gray);">当前测试: <span id="currentTestId">0</span> / <span id="totalTestsDisplay">50</span></span></h2>
+        <div class="results-header"><div class="results-count">总记录数: <span id="totalResultsCount">0</span> 条</div></div>
+        <div class="results-tables-container">
+            <div class="results-table-box press"><h3><i class="fas fa-hand-pointer"></i> 按下结果</h3><div class="results-container"><table class="results-table"><thead><tr><th>测试ID</th><th>当前延迟 (us)</th><th>最大延迟 (us)</th><th>最小延迟 (us)</th><th>平均延迟 (us)</th></tr></thead><tbody id="pressResultsBody"><tr><td colspan="5" style="text-align:center; color:var(--gray);">暂无按下数据</td></tr></tbody></table></div></div>
+            <div class="results-table-box release"><h3><i class="fas fa-hand-point-up"></i> 释放结果</h3><div class="results-container"><table class="results-table"><thead><tr><th>测试ID</th><th>当前延迟 (us)</th><th>最大延迟 (us)</th><th>最小延迟 (us)</th><th>平均延迟 (us)</th></tr></thead><tbody id="releaseResultsBody"><tr><td colspan="5" style="text-align:center; color:var(--gray);">暂无释放数据</td></tr></tbody></table></div></div>
         </div>
-
-        <!-- 页脚 -->
-        <div class="footer">
-            <p>© 2026 键盘延迟测试系统 | UBEST</p>
-        </div>
-
-        <script>
-            // ==================== 全局变量 ====================
-            let device = null;
-            let isConnected = false;
-            let isTesting = false;
-            let packetId = 0;
-            let testResults = [];
-            let pressChart = null;
-            let releaseChart = null;
-            let currentTestId = 0;
-            let totalTests = 100;
-            let selectedKeycode = 0x04; // 默认按键A
-            let selectedKeyLabel = "A";
-            let keyMode = "specific"; // "specific" 或 "any"
-            
-            // 协议常量
-            const SYNC_BYTE = 0x5A;
-            const PKT_SIZE = 64;
-            
-            // 命令类型
-            const CMD_CONFIG_SET = 0x01;
-            const CMD_TEST_START = 0x02;
-            const CMD_TEST_STOP = 0x03;
-            const CMD_START_WITH_CONFIG = 0x08;
-            
-            // 事件类型
-            const EVENT_TRIGGER_STAT = 0x14;
-            const EVENT_STATUS_REPORT = 0x12;
-            
-            // 完整的键盘按键布局定义（标准104键）
-            const keyboardLayout = [
-                // 第一行：功能键
-                [
-                    { code: 0x29, label: "Esc", class: "" },
-                    { code: 0x3A, label: "F1", class: "" },
-                    { code: 0x3B, label: "F2", class: "" },
-                    { code: 0x3C, label: "F3", class: "" },
-                    { code: 0x3D, label: "F4", class: "" },
-                    { code: 0x3E, label: "F5", class: "" },
-                    { code: 0x3F, label: "F6", class: "" },
-                    { code: 0x40, label: "F7", class: "" },
-                    { code: 0x41, label: "F8", class: "" },
-                    { code: 0x42, label: "F9", class: "" },
-                    { code: 0x43, label: "F10", class: "" },
-                    { code: 0x44, label: "F11", class: "" },
-                    { code: 0x45, label: "F12", class: "" }
-                ],
-                // 第二行：数字键
-                [
-                    { code: 0x35, label: "`", class: "" },
-                    { code: 0x1E, label: "1", class: "" },
-                    { code: 0x1F, label: "2", class: "" },
-                    { code: 0x20, label: "3", class: "" },
-                    { code: 0x21, label: "4", class: "" },
-                    { code: 0x22, label: "5", class: "" },
-                    { code: 0x23, label: "6", class: "" },
-                    { code: 0x24, label: "7", class: "" },
-                    { code: 0x25, label: "8", class: "" },
-                    { code: 0x26, label: "9", class: "" },
-                    { code: 0x27, label: "0", class: "" },
-                    { code: 0x2D, label: "-", class: "" },
-                    { code: 0x2E, label: "=", class: "" },
-                    { code: 0x2A, label: "Back", class: "wide" }
-                ],
-                // 第三行：字母键第一行
-                [
-                    { code: 0x2B, label: "Tab", class: "wide" },
-                    { code: 0x14, label: "Q", class: "" },
-                    { code: 0x1A, label: "W", class: "" },
-                    { code: 0x08, label: "E", class: "" },
-                    { code: 0x15, label: "R", class: "" },
-                    { code: 0x17, label: "T", class: "" },
-                    { code: 0x1C, label: "Y", class: "" },
-                    { code: 0x18, label: "U", class: "" },
-                    { code: 0x0C, label: "I", class: "" },
-                    { code: 0x12, label: "O", class: "" },
-                    { code: 0x13, label: "P", class: "" },
-                    { code: 0x2F, label: "[", class: "" },
-                    { code: 0x30, label: "]", class: "" },
-                    { code: 0x31, label: "\\", class: "wide" }
-                ],
-                // 第四行：字母键第二行
-                [
-                    { code: 0x39, label: "Caps", class: "x-wide" },
-                    { code: 0x04, label: "A", class: "", default: true },
-                    { code: 0x16, label: "S", class: "" },
-                    { code: 0x07, label: "D", class: "" },
-                    { code: 0x09, label: "F", class: "" },
-                    { code: 0x0A, label: "G", class: "" },
-                    { code: 0x0B, label: "H", class: "" },
-                    { code: 0x0D, label: "J", class: "" },
-                    { code: 0x0E, label: "K", class: "" },
-                    { code: 0x0F, label: "L", class: "" },
-                    { code: 0x33, label: ";", class: "" },
-                    { code: 0x34, label: "'", class: "" },
-                    { code: 0x28, label: "Enter", class: "x-wide" }
-                ],
-                // 第五行：字母键第三行
-                [
-                    { code: 0xE1, label: "Shift", class: "xx-wide" },
-                    { code: 0x1D, label: "Z", class: "" },
-                    { code: 0x1B, label: "X", class: "" },
-                    { code: 0x06, label: "C", class: "" },
-                    { code: 0x19, label: "V", class: "" },
-                    { code: 0x05, label: "B", class: "" },
-                    { code: 0x11, label: "N", class: "" },
-                    { code: 0x10, label: "M", class: "" },
-                    { code: 0x36, label: ",", class: "" },
-                    { code: 0x37, label: ".", class: "" },
-                    { code: 0x38, label: "/", class: "" },
-                    { code: 0xE5, label: "Shift", class: "xxx-wide" }
-                ],
-                // 第六行：空格键和功能键
-                [
-                    { code: 0xE2, label: "Ctrl", class: "wide" },
-                    { code: 0xE3, label: "Win", class: "wide" },
-                    { code: 0xE0, label: "Alt", class: "wide" },
-                    { code: 0x2C, label: "Space", class: "xxx-wide" },
-                    { code: 0xE6, label: "Alt", class: "wide" },
-                    { code: 0xE7, label: "Win", class: "wide" },
-                    { code: 0x65, label: "Menu", class: "wide" },
-                    { code: 0xE4, label: "Ctrl", class: "wide" }
-                ]
-            ];
-            
-            // ==================== 初始化 ====================
-            document.addEventListener('DOMContentLoaded', function() {
-                initCharts();
-                initKeyboard();
-                initEventListeners();
-                updateUI();
-                // 初始化触发电压输入框状态
-                updateTriggerVoltageState();
-                // 初始化按键模式
-                updateKeyboardMode();
-                logMessage('系统初始化完成', 'info');
+    </div>
+    <div class="notification" id="notification"><i class="fas fa-info-circle"></i><span id="notificationText">测试消息</span></div>
+    <div class="footer"><p>© 2026 键盘延迟测试系统 | UBEST</p></div>
+    <script>
+        let device = null, isConnected = false, isTesting = false, packetId = 0, testResults = [], pressChart = null, releaseChart = null;
+        let currentTestId = 0, totalTests = 50, selectedKeycode = 0x04, selectedKeyLabel = "A", keyMode = "specific", testCompleted = false;
+        let pendingStart = false, startTimeout = null;
+        let healthCheckInterval = null;
+        const SYNC_BYTE = 0x5A, PKT_SIZE = 64;
+        const CMD_START_WITH_CONFIG = 0x08, CMD_TEST_STOP = 0x03;
+        const EVENT_TRIGGER_STAT = 0x14, EVENT_STATUS_REPORT = 0x12;
+        const keyboardLayout = [
+            [{code:0x29,label:"Esc"},{code:0x3A,label:"F1"},{code:0x3B,label:"F2"},{code:0x3C,label:"F3"},{code:0x3D,label:"F4"},{code:0x3E,label:"F5"},{code:0x3F,label:"F6"},{code:0x40,label:"F7"},{code:0x41,label:"F8"},{code:0x42,label:"F9"},{code:0x43,label:"F10"},{code:0x44,label:"F11"},{code:0x45,label:"F12"}],
+            [{code:0x35,label:"`"},{code:0x1E,label:"1"},{code:0x1F,label:"2"},{code:0x20,label:"3"},{code:0x21,label:"4"},{code:0x22,label:"5"},{code:0x23,label:"6"},{code:0x24,label:"7"},{code:0x25,label:"8"},{code:0x26,label:"9"},{code:0x27,label:"0"},{code:0x2D,label:"-"},{code:0x2E,label:"="},{code:0x2A,label:"Back",class:"wide"}],
+            [{code:0x2B,label:"Tab",class:"wide"},{code:0x14,label:"Q"},{code:0x1A,label:"W"},{code:0x08,label:"E"},{code:0x15,label:"R"},{code:0x17,label:"T"},{code:0x1C,label:"Y"},{code:0x18,label:"U"},{code:0x0C,label:"I"},{code:0x12,label:"O"},{code:0x13,label:"P"},{code:0x2F,label:"["},{code:0x30,label:"]"},{code:0x31,label:"\\",class:"wide"}],
+            [{code:0x39,label:"Caps",class:"x-wide"},{code:0x04,label:"A",default:true},{code:0x16,label:"S"},{code:0x07,label:"D"},{code:0x09,label:"F"},{code:0x0A,label:"G"},{code:0x0B,label:"H"},{code:0x0D,label:"J"},{code:0x0E,label:"K"},{code:0x0F,label:"L"},{code:0x33,label:";"},{code:0x34,label:"'"},{code:0x28,label:"Enter",class:"x-wide"}],
+            [{code:0xE1,label:"Shift",class:"xx-wide"},{code:0x1D,label:"Z"},{code:0x1B,label:"X"},{code:0x06,label:"C"},{code:0x19,label:"V"},{code:0x05,label:"B"},{code:0x11,label:"N"},{code:0x10,label:"M"},{code:0x36,label:","},{code:0x37,label:"."},{code:0x38,label:"/"},{code:0xE5,label:"Shift",class:"xxx-wide"}],
+            [{code:0xE2,label:"Ctrl",class:"wide"},{code:0xE3,label:"Win",class:"wide"},{code:0xE0,label:"Alt",class:"wide"},{code:0x2C,label:"Space",class:"xxx-wide"},{code:0xE6,label:"Alt",class:"wide"},{code:0xE7,label:"Win",class:"wide"},{code:0x65,label:"Menu",class:"wide"},{code:0xE4,label:"Ctrl",class:"wide"}]
+        ];
+        document.addEventListener('DOMContentLoaded',()=>{ initCharts(); initKeyboard(); initEventListeners(); updateUI(); updateRelayPinState(); updateKeyboardMode(); });
+        function initCharts(){
+            pressChart = new Chart(document.getElementById('pressChart'),{type:'line',data:{labels:[],datasets:[{label:'按下延迟 (us)',data:[],borderColor:'#3a86ff',backgroundColor:'rgba(58,134,255,0.1)',borderWidth:2,fill:true,tension:0.2,pointRadius:2}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true,title:{display:true,text:'延迟 (us)'}},x:{title:{display:true,text:'测试序号'}}},plugins:{legend:{display:false}}}});
+            releaseChart = new Chart(document.getElementById('releaseChart'),{type:'line',data:{labels:[],datasets:[{label:'释放延迟 (us)',data:[],borderColor:'#06d6a0',backgroundColor:'rgba(6,214,160,0.1)',borderWidth:2,fill:true,tension:0.2,pointRadius:2}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true,title:{display:true,text:'延迟 (us)'}},x:{title:{display:true,text:'测试序号'}}},plugins:{legend:{display:false}}}});
+        }
+        function initKeyboard(){
+            const container=document.getElementById('keyboardContainer');
+            container.innerHTML='';
+            keyboardLayout.forEach(rowKeys=>{
+                const row=document.createElement('div'); row.className='keyboard-row';
+                rowKeys.forEach(key=>{
+                    const btn=document.createElement('div');
+                    btn.className=`key-btn ${key.class||''}`;
+                    btn.textContent=key.label;
+                    btn.dataset.code=key.code;
+                    if(key.default){ btn.classList.add('active'); selectedKeycode=key.code; selectedKeyLabel=key.label; }
+                    btn.addEventListener('click',()=>{ if(keyMode!=='specific') return; document.querySelectorAll('.key-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); selectedKeycode=parseInt(btn.dataset.code); selectedKeyLabel=btn.textContent; logMessage(`选择按键: ${selectedKeyLabel}`,'info'); });
+                    row.appendChild(btn);
+                });
+                container.appendChild(row);
             });
-            
-            // ==================== 初始化函数 ====================
-            function initCharts() {
-                // 按下延迟图表
-                const pressCtx = document.getElementById('pressChart').getContext('2d');
-                pressChart = new Chart(pressCtx, {
-                    type: 'line',
-                    data: {
-                        labels: [],
-                        datasets: [{
-                            label: '按下延迟 (us)',
-                            data: [],
-                            borderColor: '#3a86ff',
-                            backgroundColor: 'rgba(58, 134, 255, 0.1)',
-                            borderWidth: 2,
-                            fill: true,
-                            tension: 0.2,
-                            pointRadius: 2,
-                            pointBackgroundColor: '#3a86ff'
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                title: {
-                                    display: true,
-                                    text: '延迟 (us)'
-                                },
-                                grid: {
-                                    color: 'rgba(0,0,0,0.05)'
-                                }
-                            },
-                            x: {
-                                title: {
-                                    display: true,
-                                    text: '测试序号'
-                                },
-                                grid: {
-                                    color: 'rgba(0,0,0,0.05)'
-                                }
-                            }
-                        },
-                        plugins: {
-                            legend: {
-                                display: false
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        return `按下延迟: ${context.parsed.y}us`;
-                                    }
-                                }
-                            }
-                        },
-                        elements: {
-                            line: {
-                                tension: 0.2 // 平滑曲线
-                            }
-                        }
-                    }
-                });
-                
-                // 释放延迟图表
-                const releaseCtx = document.getElementById('releaseChart').getContext('2d');
-                releaseChart = new Chart(releaseCtx, {
-                    type: 'line',
-                    data: {
-                        labels: [],
-                        datasets: [{
-                            label: '释放延迟 (us)',
-                            data: [],
-                            borderColor: '#06d6a0',
-                            backgroundColor: 'rgba(6, 214, 160, 0.1)',
-                            borderWidth: 2,
-                            fill: true,
-                            tension: 0.2,
-                            pointRadius: 2,
-                            pointBackgroundColor: '#06d6a0'
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                title: {
-                                    display: true,
-                                    text: '延迟 (us)'
-                                },
-                                grid: {
-                                    color: 'rgba(0,0,0,0.05)'
-                                }
-                            },
-                            x: {
-                                title: {
-                                    display: true,
-                                    text: '测试序号'
-                                },
-                                grid: {
-                                    color: 'rgba(0,0,0,0.05)'
-                                }
-                            }
-                        },
-                        plugins: {
-                            legend: {
-                                display: false
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        return `释放延迟: ${context.parsed.y}us`;
-                                    }
-                                }
-                            }
-                        },
-                        elements: {
-                            line: {
-                                tension: 0.2 // 平滑曲线
-                            }
-                        }
-                    }
-                });
+        }
+        function initEventListeners(){
+            document.getElementById('connectBtn').addEventListener('click',connectDevice);
+            document.getElementById('startWithConfigBtn').addEventListener('click',startWithConfig);
+            document.getElementById('stopTestBtn').addEventListener('click',stopTest);
+            document.getElementById('exportDataBtn').addEventListener('click',exportToExcel);
+            document.getElementById('totalTests').addEventListener('change',()=>{ totalTests=parseInt(document.getElementById('totalTests').value)||50; document.getElementById('totalTestsDisplay').textContent=totalTests; });
+            document.getElementById('relayPin').addEventListener('change',updateRelayPinState);
+            document.querySelectorAll('input[name="keyMode"]').forEach(radio=>radio.addEventListener('change',function(){ keyMode=this.value; updateKeyboardMode(); }));
+        }
+        function updateRelayPinState(){
+            const pin=parseInt(document.getElementById('relayPin').value);
+            const sel=document.getElementById('activeLevel');
+            const hint=document.getElementById('activeLevelHint');
+            if(pin===1){ sel.disabled=false; hint.innerHTML='<i class="fas fa-info-circle"></i> 磁轴可配置有效电平'; }
+            else{ sel.disabled=true; sel.value='1'; hint.innerHTML=pin===0?'<i class="fas fa-info-circle"></i> 机械轴固定高电平有效':'<i class="fas fa-info-circle"></i> 电感轴固定高电平有效'; }
+        }
+        function updateKeyboardMode(){
+            const btns=document.querySelectorAll('.key-btn');
+            const specific=keyMode==='specific';
+            btns.forEach(btn=>{
+                if(specific){ btn.classList.remove('disabled'); btn.style.pointerEvents='auto'; btn.style.opacity='1'; }
+                else{ btn.classList.remove('active'); btn.classList.add('disabled'); btn.style.pointerEvents='none'; btn.style.opacity='0.5'; }
+            });
+            if(specific){ if(!document.querySelector('.key-btn.active')){ const def=document.querySelector(`.key-btn[data-code="${selectedKeycode}"]`); if(def) def.classList.add('active'); } selectedKeycode=parseInt(document.querySelector('.key-btn.active')?.dataset.code||0x04); selectedKeyLabel=document.querySelector('.key-btn.active')?.textContent||'A'; }
+            else{ selectedKeycode=0; selectedKeyLabel='任意按键'; }
+        }
+        // 设备断开处理（统一入口）
+        function handleDeviceDisconnect(){
+            if(!isConnected) return;
+            logMessage('设备已断开连接','warning');
+            showNotification('设备已断开，请重新连接','warning');
+            if(device){
+                device.removeEventListener('inputreport', handleInputReport);
+                device.removeEventListener('disconnect', handleDeviceDisconnect);
             }
-            
-            function initKeyboard() {
-                const keyboardContainer = document.getElementById('keyboardContainer');
-                keyboardContainer.innerHTML = '';
-                
-                keyboardLayout.forEach(rowKeys => {
-                    const row = document.createElement('div');
-                    row.className = 'keyboard-row';
-                    
-                    rowKeys.forEach(key => {
-                        const btn = document.createElement('div');
-                        btn.className = `key-btn ${key.class}`;
-                        btn.textContent = key.label;
-                        btn.dataset.code = key.code;
-                        btn.title = `键值: 0x${key.code.toString(16).toUpperCase()}`;
-                        
-                        if (key.default) {
-                            btn.classList.add('active');
-                            selectedKeycode = key.code;
-                            selectedKeyLabel = key.label;
-                        }
-                        
-                        btn.addEventListener('click', function() {
-                            // 如果当前是任意按键模式，不允许选择按键
-                            if (keyMode === "any") {
-                                return;
-                            }
-                            document.querySelectorAll('.key-btn').forEach(b => b.classList.remove('active'));
-                            this.classList.add('active');
-                            selectedKeycode = parseInt(this.dataset.code);
-                            selectedKeyLabel = this.textContent;
-                            logMessage(`选择按键: ${selectedKeyLabel} (0x${selectedKeycode.toString(16).toUpperCase()})`, 'info');
-                        });
-                        
-                        row.appendChild(btn);
-                    });
-                    
-                    keyboardContainer.appendChild(row);
-                });
+            device = null;
+            isConnected = false;
+            isTesting = false;
+            testCompleted = false;
+            if(pendingStart){
+                clearTimeout(startTimeout);
+                pendingStart = false;
             }
-            
-            function initEventListeners() {
-                // 设备连接
-                document.getElementById('connectBtn').addEventListener('click', connectDevice);
-                
-                // 测试控制
-                document.getElementById('startWithConfigBtn').addEventListener('click', startWithConfig);
-                document.getElementById('stopTestBtn').addEventListener('click', stopTest);
-                
-                // 配置变化
-                document.getElementById('totalTests').addEventListener('change', updateTotalTests);
-                document.getElementById('totalTests').addEventListener('blur', validateTotalTests);
-                
-                // 按下时间和间隔时间验证
-                document.getElementById('pressTime').addEventListener('blur', validatePressTime);
-                document.getElementById('intervalTime').addEventListener('blur', validateIntervalTime);
-                document.getElementById('triggerVoltage').addEventListener('blur', validateTriggerVoltage);
-                
-                // 输入时实时验证
-                document.getElementById('totalTests').addEventListener('input', validateInputRange);
-                document.getElementById('pressTime').addEventListener('input', validateInputRange);
-                document.getElementById('intervalTime').addEventListener('input', validateInputRange);
-                document.getElementById('triggerVoltage').addEventListener('input', validateInputRange);
-                
-                // 触发类型变化
-                document.getElementById('triggerType').addEventListener('change', updateTriggerVoltageState);
-                
-                // 按键模式变化
-                document.querySelectorAll('input[name="keyMode"]').forEach(radio => {
-                    radio.addEventListener('change', function() {
-                        keyMode = this.value;
-                        updateKeyboardMode();
-                    });
-                });
+            if(healthCheckInterval){
+                clearInterval(healthCheckInterval);
+                healthCheckInterval = null;
             }
-            
-            // ==================== 输入验证函数 ====================
-            function validateInputRange(event) {
-                const input = event.target;
-                const id = input.id;
-                let min, max;
-                
-                // 设置不同输入框的范围
-                switch(id) {
-                    case 'totalTests':
-                    case 'pressTime':
-                    case 'intervalTime':
-                        min = 1;
-                        max = 60000;
-                        break;
-                    case 'triggerVoltage':
-                        min = 0;
-                        max = 330000;
-                        break;
-                    default:
-                        return;
-                }
-                
-                // 获取当前值
-                let value = parseInt(input.value) || min;
-                
-                // 检查是否超出范围
-                if (value < min) {
-                    input.classList.add('invalid');
-                } else if (value > max) {
-                    input.classList.add('invalid');
-                } else {
-                    input.classList.remove('invalid');
-                }
-            }
-            
-            function validateTotalTests() {
-                const input = document.getElementById('totalTests');
-                const min = 1;
-                const max = 60000;
-                let value = parseInt(input.value) || min;
-                
-                if (value < min) {
-                    value = min;
-                    showNotification(`测试次数已自动调整为最小值 ${min}`, 'info');
-                } else if (value > max) {
-                    value = max;
-                    showNotification(`测试次数已自动调整为最大值 ${max}`, 'info');
-                }
-                
-                input.value = value;
-                input.classList.remove('invalid');
-                updateTotalTests();
-            }
-            
-            function validatePressTime() {
-                const input = document.getElementById('pressTime');
-                const min = 1;
-                const max = 60000;
-                let value = parseInt(input.value) || min;
-                
-                if (value < min) {
-                    value = min;
-                    showNotification(`按下时间已自动调整为最小值 ${min}`, 'info');
-                } else if (value > max) {
-                    value = max;
-                    showNotification(`按下时间已自动调整为最大值 ${max}`, 'info');
-                }
-                
-                input.value = value;
-                input.classList.remove('invalid');
-            }
-            
-            function validateIntervalTime() {
-                const input = document.getElementById('intervalTime');
-                const min = 1;
-                const max = 60000;
-                let value = parseInt(input.value) || min;
-                
-                if (value < min) {
-                    value = min;
-                    showNotification(`间隔时间已自动调整为最小值 ${min}`, 'info');
-                } else if (value > max) {
-                    value = max;
-                    showNotification(`间隔时间已自动调整为最大值 ${max}`, 'info');
-                }
-                
-                input.value = value;
-                input.classList.remove('invalid');
-            }
-            
-            function validateTriggerVoltage() {
-                const input = document.getElementById('triggerVoltage');
-                const min = 0;
-                const max = 330000;
-                let value = parseInt(input.value) || min;
-                
-                if (value < min) {
-                    value = min;
-                    showNotification(`触发电压已自动调整为最小值 ${min}`, 'info');
-                } else if (value > max) {
-                    value = max;
-                    showNotification(`触发电压已自动调整为最大值 ${max}`, 'info');
-                }
-                
-                input.value = value;
-                input.classList.remove('invalid');
-            }
-            
-            function updateTotalTests() {
-                totalTests = parseInt(document.getElementById('totalTests').value) || 100;
-                document.getElementById('totalTestsDisplay').textContent = totalTests;
-            }
-            
-            // 更新触发电压输入框状态
-            function updateTriggerVoltageState() {
-                const triggerType = document.getElementById('triggerType').value;
-                const triggerVoltageInput = document.getElementById('triggerVoltage');
-                
-                if (triggerType === "0") {
-                    // 电平触发，禁用输入框，设置值为0
-                    triggerVoltageInput.disabled = true;
-                    triggerVoltageInput.value = 0;
-                    logMessage("触发类型设置为电平触发，触发电压设置为0", 'info');
-                } else {
-                    // 电压触发，启用输入框，设置默认值150000
-                    triggerVoltageInput.disabled = false;
-                    if (triggerVoltageInput.value === "0") {
-                        triggerVoltageInput.value = 150000;
-                    }
-                    logMessage("触发类型设置为电压触发，触发电压可输入", 'info');
-                }
-            }
-            
-            // 更新按键模式
-            function updateKeyboardMode() {
-                const keyboardButtons = document.querySelectorAll('.key-btn');
-                const isSpecificMode = keyMode === "specific";
-                
-                if (isSpecificMode) {
-                    // 指定按键模式：启用键盘按键选择
-                    keyboardButtons.forEach(btn => {
-                        btn.classList.remove('disabled');
-                        btn.style.pointerEvents = 'auto';
-                        btn.style.opacity = '1';
-                    });
-                    
-                    // 如果没有选中任何按键，则选中默认的A键
-                    const activeBtn = document.querySelector('.key-btn.active');
-                    if (!activeBtn) {
-                        const defaultBtn = document.querySelector(`.key-btn[data-code="${selectedKeycode}"]`);
-                        if (defaultBtn) {
-                            defaultBtn.classList.add('active');
-                            selectedKeycode = parseInt(defaultBtn.dataset.code);
-                            selectedKeyLabel = defaultBtn.textContent;
-                        }
-                    }
-                    
-                    logMessage("按键模式设置为：指定按键", 'info');
-                } else {
-                    // 任意按键模式：禁用键盘按键选择
-                    keyboardButtons.forEach(btn => {
-                        btn.classList.remove('active');
-                        btn.classList.add('disabled');
-                        btn.style.pointerEvents = 'none';
-                        btn.style.opacity = '0.5';
-                    });
-                    
-                    // 设置按键值为0
-                    selectedKeycode = 0;
-                    selectedKeyLabel = "任意按键";
-                    
-                    logMessage("按键模式设置为：任意按键", 'info');
-                }
-            }
-            
-            // ==================== 设备连接 ====================
-            async function connectDevice() {
-                if (!navigator.hid) {
-                    alert('您的浏览器不支持WebHID API。请使用Chrome 89+或Edge 89+版本。');
+            updateUI();
+            document.getElementById('startWithConfigBtn').disabled = true;
+            document.getElementById('stopTestBtn').disabled = true;
+        }
+        // 健康检查定时器（每2秒被动检测，不发送任何数据）
+        function startHealthCheck(){
+            if(healthCheckInterval) clearInterval(healthCheckInterval);
+            healthCheckInterval = setInterval(async ()=>{
+                if(!isConnected || !device){
+                    if(device) handleDeviceDisconnect();
                     return;
                 }
-                
-                try {
-                    logMessage("请求设备权限...", 'info');
-                    
-                    // 请求访问HID设备
-                    const devices = await navigator.hid.requestDevice({
-                        filters: [
-                            { vendorId: 0x5542, productId: 0x1008, usagePage: 0xFF60, usage: 0x61 },
-                        ]
-                    });
-                    
-                    if (devices.length === 0) {
-                        logMessage("用户未选择设备", 'warning');
-                        showNotification('未选择设备', 'warning');
+                // 检查 device.opened
+                if(!device.opened){
+                    handleDeviceDisconnect();
+                    return;
+                }
+                // 检查设备是否仍在授权列表中
+                try{
+                    const devices = await navigator.hid.getDevices();
+                    const stillExists = devices.some(d => d === device);
+                    if(!stillExists){
+                        handleDeviceDisconnect();
                         return;
                     }
-                    
+                } catch(e){
+                    handleDeviceDisconnect();
+                }
+            }, 2000);
+        }
+        // 智能连接：优先使用已授权设备，无需弹出选择框；否则弹出选择框
+        async function connectDevice(){
+            if(!navigator.hid){ alert('浏览器不支持WebHID'); return; }
+            try{
+                // 先尝试获取已经授权且可用的设备
+                let existingDevices = await navigator.hid.getDevices();
+                let targetDevice = existingDevices.find(d => d.vendorId === 0x5542 && d.productId === 0x1008);
+                if(targetDevice){
+                    // 如果设备已打开且可用，直接使用
+                    if(!targetDevice.opened){
+                        await targetDevice.open();
+                    }
+                    device = targetDevice;
+                } else {
+                    // 没有已授权设备，弹出选择框
+                    const devices = await navigator.hid.requestDevice({filters:[{vendorId:0x5542,productId:0x1008,usagePage:0xFF60,usage:0x61}]});
+                    if(devices.length === 0) return;
                     device = devices[0];
-                    logMessage(`选择设备: ${device.productName || '未知设备'}`, 'success');
-                    
-                    // 连接设备
-                    if (!device.opened) {
-                        await device.open();
-                        logMessage("设备连接成功", 'success');
-                    }
-                    
-                    // 设置事件监听器
-                    device.addEventListener('inputreport', handleInputReport);
-                    device.addEventListener('disconnect', handleDeviceDisconnect);
-                    
-                    isConnected = true;
-                    updateUI();
-                    updateDeviceInfo();
-                    
-                    logMessage(`已连接到设备: ${device.productName || '未知设备'}`, 'success');
-                    showNotification('设备连接成功', 'success');
-                    
-                } catch (error) {
-                    console.error('连接设备时出错:', error);
-                    logMessage(`连接失败: ${error.message}`, 'error');
-                    showNotification(`连接失败: ${error.message}`, 'error');
+                    if(!device.opened) await device.open();
+                }
+                // 设置监听器
+                device.removeEventListener('inputreport', handleInputReport);
+                device.removeEventListener('disconnect', handleDeviceDisconnect);
+                device.addEventListener('inputreport', handleInputReport);
+                device.addEventListener('disconnect', handleDeviceDisconnect);
+                isConnected = true;
+                startHealthCheck();
+                updateUI();
+                updateDeviceInfo();
+                showNotification('设备连接成功','success');
+            } catch(e){
+                logMessage(`连接失败: ${e.message}`,'error');
+                showNotification(`连接失败: ${e.message}`,'error');
+            }
+        }
+        async function sendData(data){
+            if(!device||!device.opened) throw new Error('设备未连接');
+            try{
+                const buf=new Uint8Array(PKT_SIZE);
+                if(data instanceof Uint8Array) buf.set(data.slice(0,PKT_SIZE));
+                else if(Array.isArray(data)) buf.set(data.slice(0,PKT_SIZE));
+                await device.sendReport(0,buf);
+            } catch(e){
+                // 发送失败可能因为设备断开
+                handleDeviceDisconnect();
+                throw e;
+            }
+        }
+        function readUint16LE(d,o){ return d[o]|(d[o+1]<<8); }
+        function readUint32LE(d,o){ return (d[o]|(d[o+1]<<8)|(d[o+2]<<16)|(d[o+3]<<24))>>>0; }
+        function writeUint16LE(d,o,v){ d[o]=v&0xFF; d[o+1]=(v>>8)&0xFF; }
+        function writeUint32LE(d,o,v){ d[o]=v&0xFF; d[o+1]=(v>>8)&0xFF; d[o+2]=(v>>16)&0xFF; d[o+3]=(v>>24)&0xFF; }
+        function handleInputReport(event){
+            const data=new Uint8Array(event.data.buffer);
+            if(data.length>=8 && data[0]===SYNC_BYTE){
+                if(data[1]===EVENT_TRIGGER_STAT) processTriggerStat(data);
+                else if(data[1]===EVENT_STATUS_REPORT) processStatusReport(data);
+            }
+        }
+        function processStatusReport(data){
+            if(data.length<24) return;
+            const testState=data[9];
+            const newTesting = (testState===1);
+            if(isTesting !== newTesting){
+                isTesting = newTesting;
+                updateUI();
+                if(!isTesting && pendingStart){
+                    if(startTimeout) clearTimeout(startTimeout);
+                    pendingStart=false;
+                    showNotification('设备已停止测试','info');
                 }
             }
-            
-            function handleDeviceDisconnect() {
-                logMessage('设备已断开连接', 'warning');
-                showNotification('设备已断开', 'warning');
-                
-                device = null;
-                isConnected = false;
-                isTesting = false;
+            if(testState===1) testCompleted=false;
+            else testCompleted=true;
+        }
+        function processTriggerStat(data){
+            if(data.length<32) return;
+            const testId=readUint16LE(data,8);
+            const eventType=data[10];
+            const keycode=data[11];
+            const curDelay=readUint32LE(data,12);
+            const maxDelay=readUint32LE(data,16);
+            const minDelay=readUint32LE(data,20);
+            const avgDelay=readUint32LE(data,24);
+            if(pendingStart){
+                if(startTimeout) clearTimeout(startTimeout);
+                pendingStart=false;
+                isTesting=true;
                 updateUI();
+                showNotification('测试已启动','success');
+            }
+            if(testId>totalTests && !testCompleted){ testCompleted=true; isTesting=false; updateUI(); logMessage('测试完成，自动停止','info'); return; }
+            if(testCompleted && testId>totalTests) return;
+            currentTestId=testId;
+            document.getElementById('currentTestId').textContent=testId;
+            let keyLabel=keycode===0?'任意按键':(()=>{ for(let r of keyboardLayout) for(let k of r) if(k.code===keycode) return k.label; return '未知'; })();
+            const result={id:testId,eventType,keycode,keyLabel,curDelay,maxDelay,minDelay,avgDelay,timestamp:new Date().toLocaleTimeString(),eventName:eventType===0?'按下':'释放'};
+            testResults.push(result);
+            if(eventType===0){
+                document.getElementById('pressMax').textContent=maxDelay; document.getElementById('pressMin').textContent=minDelay; document.getElementById('pressAvg').textContent=avgDelay;
+                document.getElementById('pressCount').textContent=parseInt(document.getElementById('pressCount').textContent)+1;
+                pressChart.data.labels.push(testId.toString()); pressChart.data.datasets[0].data.push(curDelay);
+                if(pressChart.data.labels.length>100){ pressChart.data.labels.shift(); pressChart.data.datasets[0].data.shift(); }
+                pressChart.update(); document.getElementById('pressChartInfo').textContent=`显示${pressChart.data.labels.length}个数据点`;
+            }else{
+                document.getElementById('releaseMax').textContent=maxDelay; document.getElementById('releaseMin').textContent=minDelay; document.getElementById('releaseAvg').textContent=avgDelay;
+                document.getElementById('releaseCount').textContent=parseInt(document.getElementById('releaseCount').textContent)+1;
+                releaseChart.data.labels.push(testId.toString()); releaseChart.data.datasets[0].data.push(curDelay);
+                if(releaseChart.data.labels.length>100){ releaseChart.data.labels.shift(); releaseChart.data.datasets[0].data.shift(); }
+                releaseChart.update(); document.getElementById('releaseChartInfo').textContent=`显示${releaseChart.data.labels.length}个数据点`;
+            }
+            addResultToTable(result);
+            updateProgress();
+            updateResultsCount();
+            if(currentTestId>=totalTests && !testCompleted){ testCompleted=true; isTesting=false; updateUI(); showNotification('测试已完成','success'); }
+            logMessage(`测试 #${testId}: ${result.eventName}, 按键 ${keyLabel}, 当前延迟: ${curDelay}us`,'info');
+        }
+        async function startWithConfig(){
+            if(!device || pendingStart) return;
+            try{
                 resetTestData();
-            }
-            
-            // ==================== 数据发送 ====================
-            async function sendData(data) {
-                if (!device || !device.opened) {
-                    throw new Error('设备未连接');
-                }
-                
-                try {
-                    const dataArray = new Uint8Array(PKT_SIZE);
-                    
-                    if (data instanceof ArrayBuffer) {
-                        const source = new Uint8Array(data);
-                        dataArray.set(source.slice(0, PKT_SIZE));
-                    } else if (Array.isArray(data)) {
-                        dataArray.set(data.slice(0, PKT_SIZE));
-                    } else if (data instanceof Uint8Array) {
-                        dataArray.set(data.slice(0, PKT_SIZE));
-                    } else {
-                        throw new Error('不支持的数据格式');
+                testCompleted=false;
+                totalTests=parseInt(document.getElementById('totalTests').value)||50;
+                const pressTime=parseInt(document.getElementById('pressTime').value)||10;
+                const intervalTime=parseInt(document.getElementById('intervalTime').value)||20;
+                let relayPin=parseInt(document.getElementById('relayPin').value)||0;
+                let activeLevel=parseInt(document.getElementById('activeLevel').value)||0;
+                if(relayPin!==1) activeLevel=1;
+                const keycodeToSend=keyMode==='specific'?selectedKeycode:0;
+                const data=new Uint8Array(PKT_SIZE);
+                data[0]=SYNC_BYTE; data[1]=CMD_START_WITH_CONFIG; data[2]=packetId++; data[3]=36-8;
+                writeUint32LE(data,4,Date.now());
+                writeUint16LE(data,8,totalTests); writeUint16LE(data,10,pressTime); writeUint16LE(data,12,10); writeUint16LE(data,14,intervalTime);
+                data[16]=relayPin; data[17]=activeLevel; data[18]=5; data[19]=0; data[20]=0; data[21]=keycodeToSend; data[22]=1; data[23]=0; data[24]=0;
+                writeUint32LE(data,25,0);
+                await sendData(data);
+                pendingStart=true;
+                document.getElementById('startWithConfigBtn').disabled=true;
+                if(startTimeout) clearTimeout(startTimeout);
+                startTimeout=setTimeout(()=>{
+                    if(pendingStart){
+                        pendingStart=false;
+                        document.getElementById('startWithConfigBtn').disabled=!isConnected||isTesting;
+                        showNotification('设备未响应，请检查连接','error');
+                        logMessage('启动超时：未收到设备响应','error');
                     }
-                    
-                    const reportId = 0;
-                    
-                    debugLog(`发送数据包: ${bytesToHex(dataArray)}`, 'send');
-                    
-                    await device.sendReport(reportId, dataArray);
-                    
-                    return true;
-                    
-                } catch (error) {
-                    logMessage(`发送数据失败: ${error.message}`, 'error');
-                    throw error;
-                }
-            }
-            
-            // ==================== 小端模式辅助函数 ====================
-            function readUint16LE(data, offset) {
-                return data[offset] | (data[offset + 1] << 8);
-            }
-            
-            function readUint32LE(data, offset) {
-                return (data[offset] |
-                       (data[offset + 1] << 8) |
-                       (data[offset + 2] << 16) |
-                       (data[offset + 3] << 24)) >>> 0;
-            }
-            
-            function writeUint16LE(data, offset, value) {
-                data[offset] = value & 0xFF;
-                data[offset + 1] = (value >> 8) & 0xFF;
-            }
-            
-            function writeUint32LE(data, offset, value) {
-                data[offset] = value & 0xFF;
-                data[offset + 1] = (value >> 8) & 0xFF;
-                data[offset + 2] = (value >> 16) & 0xFF;
-                data[offset + 3] = (value >> 24) & 0xFF;
-            }
-            
-            // ==================== 核心逻辑：处理输入报告 ====================
-            function handleInputReport(event) {
-                try {
-                    const data = new Uint8Array(event.data.buffer);
-                    const reportId = event.reportId;
-                    
-                    debugLog(`收到输入报告 (ID: ${reportId}): ${bytesToHex(data)}`, 'recv');
-                    
-                    if (data.length >= 8 && data[0] === SYNC_BYTE) {
-                        const packetType = data[1];
-                        
-                        switch (packetType) {
-                            case EVENT_TRIGGER_STAT:
-                                processTriggerStat(data);
-                                break;
-                                
-                            case EVENT_STATUS_REPORT:
-                                processStatusReport(data);
-                                break;
-                                
-                            default:
-                                debugLog(`未知数据包类型: 0x${packetType.toString(16)}`, 'info');
-                        }
-                    }
-                    
-                } catch (error) {
-                    logMessage(`处理输入报告失败: ${error.message}`, 'error');
-                }
-            }
-            
-            // 处理触发统计事件 (0x14) - 修改为新格式
-            function processTriggerStat(data) {
-                if (data.length < 32) return;
-                
-                const testId = readUint16LE(data, 8);
-                const eventType = data[10]; // 0=按下统计，1=释放统计
-                const keycode = data[11];
-                const curDelay = readUint32LE(data, 12); // us - 当前延迟
-                const maxDelay = readUint32LE(data, 16); // us
-                const minDelay = readUint32LE(data, 20); // us
-                const avgDelay = readUint32LE(data, 24); // us
-                
-                // 更新当前测试ID
-                currentTestId = testId;
-                document.getElementById('currentTestId').textContent = testId;
-                
-                // 获取按键标签
-                let keyLabel = "未知";
-                if (keycode === 0) {
-                    keyLabel = "任意按键";
-                } else {
-                    keyboardLayout.forEach(row => {
-                        row.forEach(key => {
-                            if (key.code === keycode) {
-                                keyLabel = key.label;
-                            }
-                        });
-                    });
-                }
-                
-                // 创建测试结果记录
-                const result = {
-                    id: testId,
-                    eventType: eventType,
-                    keycode: keycode,
-                    keyLabel: keyLabel,
-                    curDelay: curDelay,
-                    maxDelay: maxDelay,
-                    minDelay: minDelay,
-                    avgDelay: avgDelay,
-                    timestamp: new Date().toLocaleTimeString(),
-                    eventName: eventType === 0 ? '按下' : '释放'
-                };
-                
-                testResults.push(result);
-                
-                // 更新统计显示
-                if (eventType === 0) {
-                    // 按下统计
-                    document.getElementById('pressMax').textContent = maxDelay;
-                    document.getElementById('pressMin').textContent = minDelay;
-                    document.getElementById('pressAvg').textContent = avgDelay;
-                    const pressCount = parseInt(document.getElementById('pressCount').textContent) + 1;
-                    document.getElementById('pressCount').textContent = pressCount;
-                    
-                    // 更新图表
-                    const labels = pressChart.data.labels;
-                    const chartData = pressChart.data.datasets[0].data;
-                    
-                    labels.push(testId.toString());
-                    chartData.push(curDelay);
-                    
-                    // 最多显示100个数据点
-                    if (labels.length > 100) {
-                        labels.shift();
-                        chartData.shift();
-                    }
-                    
-                    pressChart.update();
-                    
-                    // 更新图表信息
-                    document.getElementById('pressChartInfo').textContent = `显示${labels.length}个数据点`;
-                    
-                } else {
-                    // 释放统计
-                    document.getElementById('releaseMax').textContent = maxDelay;
-                    document.getElementById('releaseMin').textContent = minDelay;
-                    document.getElementById('releaseAvg').textContent = avgDelay;
-                    const releaseCount = parseInt(document.getElementById('releaseCount').textContent) + 1;
-                    document.getElementById('releaseCount').textContent = releaseCount;
-                    
-                    // 更新图表
-                    const labels = releaseChart.data.labels;
-                    const chartData = releaseChart.data.datasets[0].data;
-                    
-                    labels.push(testId.toString());
-                    chartData.push(curDelay);
-                    
-                    // 最多显示100个数据点
-                    if (labels.length > 100) {
-                        labels.shift();
-                        chartData.shift();
-                    }
-                    
-                    releaseChart.update();
-                    
-                    // 更新图表信息
-                    document.getElementById('releaseChartInfo').textContent = `显示${labels.length}个数据点`;
-                }
-                
-                // 更新表格 - 分别更新按下和释放表格
-                addResultToTable(result);
-                
-                // 更新进度
-                updateProgress();
-                
-                // 更新结果计数
-                updateResultsCount();
-                
-                // 检查测试是否完成
-                checkTestCompletion();
-                
-                // 显示日志
-                const eventName = eventType === 0 ? '按下' : '释放';
-                logMessage(`测试 #${testId}: ${eventName}, 按键 ${keyLabel}, 当前延迟: ${curDelay}us`, 'info');
-            }
-            
-            // 检查测试是否完成
-            function checkTestCompletion() {
-                if (currentTestId >= totalTests) {
-                    // 测试完成，恢复一键启动按钮
-                    isTesting = false;
-                    updateUI();
-                    logMessage('测试已完成，一键启动按钮已恢复可用', 'info');
-                }
-            }
-            
-            // 处理状态报告 (0x12)
-            function processStatusReport(data) {
-                if (data.length < 24) return;
-                
-                const deviceState = data[8];
-                const testState = data[9];
-                const errorCode = data[10];
-                const keycode = data[11];
-                
-                // 测试进度
-                const completed = readUint16LE(data, 12);
-                const failed = readUint16LE(data, 14);
-                const currentId = readUint16LE(data, 16);
-                
-                // 更新设备状态
-                updateDeviceStatus(deviceState);
-                
-                // 如果有错误
-                if (errorCode !== 0) {
-                    const errorMsg = getErrorMessage(errorCode);
-                    logMessage(`设备报告错误: ${errorMsg}`, 'error');
-                    showNotification(`设备错误: ${errorMsg}`, 'error');
-                }
-            }
-            
-            function updateDeviceStatus(state) {
-                let stateText = '';
-                const indicator = document.getElementById('statusIndicator');
-                
-                switch (state) {
-                    case 0x00: stateText = '空闲'; break;
-                    case 0x01: stateText = '已配置'; break;
-                    case 0x02: stateText = '测试中'; break;
-                    case 0x03: stateText = '已暂停'; break;
-                    case 0x04: stateText = '错误'; break;
-                    default: stateText = '未知';
-                }
-                
-                document.getElementById('statusText').textContent = stateText;
-                indicator.className = 'status-indicator';
-                
-                if (state === 0x02) {
-                    indicator.classList.add('status-testing');
-                    isTesting = true;
-                } else if (state === 0x04) {
-                    indicator.classList.add('status-disconnected');
-                    isTesting = false;
-                } else if (state === 0x03) {
-                    indicator.classList.add('status-connected');
-                } else {
-                    indicator.classList.add('status-connected');
-                    isTesting = false;
-                }
-                
+                },3000);
+                logMessage(`发送启动命令，等待设备响应...`,'info');
+                showNotification('正在启动...','info');
+            }catch(e){ logMessage(`启动失败: ${e.message}`,'error'); showNotification(`启动失败: ${e.message}`,'error'); }
+        }
+        async function stopTest(){
+            if(!device) return;
+            try{
+                const data=new Uint8Array(PKT_SIZE);
+                data[0]=SYNC_BYTE; data[1]=CMD_TEST_STOP; data[2]=packetId++; data[3]=1;
+                writeUint32LE(data,4,Date.now()); data[8]=0;
+                await sendData(data);
+                if(pendingStart){ clearTimeout(startTimeout); pendingStart=false; }
+                isTesting=false;
+                testCompleted=true;
                 updateUI();
+                showNotification('测试已停止','info');
+            }catch(e){ logMessage(`停止失败: ${e.message}`,'error'); }
+        }
+        function exportToExcel(){
+            try{
+                const wb=XLSX.utils.book_new();
+                const stats=[['统计项','按下延迟(us)','释放延迟(us)'],['最大值',document.getElementById('pressMax').textContent,document.getElementById('releaseMax').textContent],['最小值',document.getElementById('pressMin').textContent,document.getElementById('releaseMin').textContent],['平均值',document.getElementById('pressAvg').textContent,document.getElementById('releaseAvg').textContent],['测试次数',document.getElementById('pressCount').textContent,document.getElementById('releaseCount').textContent]];
+                XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(stats),'统计数据');
+                const pressRows=[['测试ID','当前延迟(us)','最大延迟(us)','最小延迟(us)','平均延迟(us)']];
+                testResults.filter(r=>r.eventType===0).forEach(r=>pressRows.push([r.id,r.curDelay,r.maxDelay,r.minDelay,r.avgDelay]));
+                XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(pressRows),'按下结果');
+                const releaseRows=[['测试ID','当前延迟(us)','最大延迟(us)','最小延迟(us)','平均延迟(us)']];
+                testResults.filter(r=>r.eventType===1).forEach(r=>releaseRows.push([r.id,r.curDelay,r.maxDelay,r.minDelay,r.avgDelay]));
+                XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(releaseRows),'释放结果');
+                XLSX.writeFile(wb,`键盘测试数据_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.xlsx`);
+                showNotification('导出成功','success');
+            }catch(e){ logMessage(`导出失败: ${e.message}`,'error'); }
+        }
+        function resetTestData(){
+            testResults=[]; currentTestId=0; testCompleted=false;
+            document.getElementById('pressMax').textContent='0'; document.getElementById('pressMin').textContent='0'; document.getElementById('pressAvg').textContent='0'; document.getElementById('pressCount').textContent='0';
+            document.getElementById('releaseMax').textContent='0'; document.getElementById('releaseMin').textContent='0'; document.getElementById('releaseAvg').textContent='0'; document.getElementById('releaseCount').textContent='0';
+            pressChart.data.labels=[]; pressChart.data.datasets[0].data=[]; pressChart.update();
+            releaseChart.data.labels=[]; releaseChart.data.datasets[0].data=[]; releaseChart.update();
+            document.getElementById('pressChartInfo').textContent='显示0个数据点'; document.getElementById('releaseChartInfo').textContent='显示0个数据点';
+            document.getElementById('pressResultsBody').innerHTML='<tr><td colspan="5" style="text-align:center; color:var(--gray);">暂无按下数据</td></tr>';
+            document.getElementById('releaseResultsBody').innerHTML='<tr><td colspan="5" style="text-align:center; color:var(--gray);">暂无释放数据</td></tr>';
+            document.getElementById('progressFill').style.width='0%'; document.getElementById('progressText').textContent='0% (0/0)'; document.getElementById('currentTestId').textContent='0';
+            updateResultsCount();
+        }
+        function addResultToTable(result){
+            const tbody=result.eventType===0?document.getElementById('pressResultsBody'):document.getElementById('releaseResultsBody');
+            if(tbody.rows.length===1 && tbody.rows[0].cells[0].colSpan===5) tbody.innerHTML='';
+            const row=tbody.insertRow(0);
+            row.insertCell(0).textContent=result.id;
+            row.insertCell(1).textContent=result.curDelay;
+            row.insertCell(2).textContent=result.maxDelay;
+            row.insertCell(3).textContent=result.minDelay;
+            row.insertCell(4).textContent=result.avgDelay;
+            if(tbody.rows.length>50) tbody.deleteRow(50);
+        }
+        function updateResultsCount(){ document.getElementById('totalResultsCount').textContent=testResults.length; }
+        function updateProgress(){ let p=totalTests>0?(currentTestId/totalTests)*100:0; document.getElementById('progressFill').style.width=`${Math.min(p,100)}%`; document.getElementById('progressText').textContent=`${p.toFixed(1)}% (${currentTestId}/${totalTests})`; }
+        function updateUI(){
+            const connectBtn = document.getElementById('connectBtn');
+            connectBtn.disabled = isConnected;
+            if(isConnected){
+                connectBtn.innerHTML = '<i class="fas fa-plug"></i> 已连接';
+            } else {
+                connectBtn.innerHTML = '<i class="fas fa-plug"></i> 连接设备';
             }
-            
-            function getErrorMessage(code) {
-                const errors = {
-                    0x00: '无错误',
-                    0x01: '无效命令',
-                    0x02: '无效参数',
-                    0x03: '配置失败',
-                    0x04: '测试失败',
-                    0x05: '硬件故障',
-                    0x06: '内存已满',
-                    0x07: '校准失败'
-                };
-                return errors[code] || `未知错误 (${code})`;
-            }
-            
-            // ==================== 设备控制 ====================
-            async function startWithConfig() {
-                if (!device) return;
-                
-                try {
-                    // 清除历史数据
-                    resetTestData();
-                    
-                    // 获取配置值
-                    totalTests = parseInt(document.getElementById('totalTests').value) || 50;
-                    const pressTime = parseInt(document.getElementById('pressTime').value) || 10;
-                    const intervalTime = parseInt(document.getElementById('intervalTime').value) || 20;
-                    const triggerType = parseInt(document.getElementById('triggerType').value) || 0;
-                    
-                    // 根据触发类型决定触发电压值
-                    let triggerVoltage;
-                    if (triggerType === 0) {
-                        // 电平触发，下发电压为0
-                        triggerVoltage = 0;
-                    } else {
-                        // 电压触发，使用用户输入的值，默认为150000
-                        triggerVoltage = parseInt(document.getElementById('triggerVoltage').value) || 150000;
-                    }
-                    
-                    const relayPin = parseInt(document.getElementById('relayPin').value) || 0;
-                    const activeLevel = parseInt(document.getElementById('activeLevel').value) || 0; // 默认低电平有效
-                    
-                    // 根据按键模式决定发送的按键值
-                    const keycodeToSend = keyMode === "specific" ? selectedKeycode : 0;
-                    const keyLabelToSend = keyMode === "specific" ? selectedKeyLabel : "任意按键";
-                    
-                    // 创建配置包 (36字节)
-                    const data = new Uint8Array(PKT_SIZE);
-                    
-                    // 包头 (8字节)
-                    data[0] = SYNC_BYTE;
-                    data[1] = CMD_START_WITH_CONFIG; // 一键启动命令
-                    data[2] = packetId++;
-                    data[3] = 36 - 8; // 数据长度
-                    
-                    const timestamp = Date.now();
-                    writeUint32LE(data, 4, timestamp);
-                    
-                    // 测试参数 (8字节)
-                    writeUint16LE(data, 8, totalTests);    // total_tests
-                    writeUint16LE(data, 10, pressTime);    // press_time
-                    writeUint16LE(data, 12, 10);           // release_time
-                    writeUint16LE(data, 14, intervalTime); // interval
-                    
-                    // GPIO配置 (2字节)
-                    data[16] = relayPin;    // relay_pin
-                    data[17] = activeLevel; // active_level
-                    
-                    // 高级配置 (3字节)
-                    data[18] = 5;    // debounce_time
-                    data[19] = 0;    // auto_save
-                    data[20] = 0;    // repeat_mode
-                    
-                    // 新增配置 (5字节) - 只支持新格式
-                    data[21] = keycodeToSend;   // keycode (根据模式发送0或选中的按键值)
-                    data[22] = 1;                // report_format (固定为新格式)
-                    data[23] = triggerType;     // trigger_type
-                    data[24] = 0;               // reserved
-                    
-                    // trigger_voltage (4字节)
-                    writeUint32LE(data, 25, triggerVoltage);
-                    
-                    // 发送数据
-                    await sendData(data);
-                    
-                    isTesting = true;
-                    updateUI();
-                    
-                    logMessage(`一键启动: 测试次数=${totalTests}, 按键=${keyLabelToSend}(${keyMode==="specific"?"0x"+keycodeToSend.toString(16).toUpperCase():"0"}), 触发类型=${triggerType===0?'电平':'电压'}, 触发电压=${triggerVoltage}`, 'success');
-                    showNotification('测试已启动', 'success');
-                    
-                } catch (error) {
-                    logMessage(`一键启动失败: ${error.message}`, 'error');
-                    showNotification(`启动失败: ${error.message}`, 'error');
-                }
-            }
-            
-            async function stopTest() {
-                if (!device) return;
-                
-                try {
-                    const data = new Uint8Array(PKT_SIZE);
-                    data[0] = SYNC_BYTE;
-                    data[1] = CMD_TEST_STOP;
-                    data[2] = packetId++;
-                    data[3] = 1;
-                    
-                    const timestamp = Date.now();
-                    writeUint32LE(data, 4, timestamp);
-                    
-                    data[8] = 0;
-                    
-                    await sendData(data);
-                    
-                    isTesting = false;
-                    updateUI();
-                    
-                    logMessage('测试已停止', 'info');
-                    showNotification('测试已停止', 'info');
-                    
-                } catch (error) {
-                    logMessage(`停止测试失败: ${error.message}`, 'error');
-                }
-            }
-            
-            // ==================== 数据管理 ====================
-            function resetTestData() {
-                testResults = [];
-                currentTestId = 0;
-                
-                // 重置统计显示
-                document.getElementById('pressMax').textContent = '0';
-                document.getElementById('pressMin').textContent = '0';
-                document.getElementById('pressAvg').textContent = '0';
-                document.getElementById('pressCount').textContent = '0';
-                
-                document.getElementById('releaseMax').textContent = '0';
-                document.getElementById('releaseMin').textContent = '0';
-                document.getElementById('releaseAvg').textContent = '0';
-                document.getElementById('releaseCount').textContent = '0';
-                
-                // 重置图表
-                pressChart.data.labels = [];
-                pressChart.data.datasets[0].data = [];
-                pressChart.update();
-                
-                releaseChart.data.labels = [];
-                releaseChart.data.datasets[0].data = [];
-                releaseChart.update();
-                
-                // 重置图表信息
-                document.getElementById('pressChartInfo').textContent = '显示0个数据点';
-                document.getElementById('releaseChartInfo').textContent = '显示0个数据点';
-                
-                // 重置表格
-                document.getElementById('pressResultsBody').innerHTML = `
-                    <tr>
-                        <td colspan="5" style="text-align: center; color: var(--gray);">
-                            暂无按下数据
-                        </td>
-                    </tr>
-                `;
-                
-                document.getElementById('releaseResultsBody').innerHTML = `
-                    <tr>
-                        <td colspan="5" style="text-align: center; color: var(--gray);">
-                            暂无释放数据
-                        </td>
-                    </tr>
-                `;
-                
-                // 重置进度
-                document.getElementById('progressFill').style.width = '0%';
-                document.getElementById('progressText').textContent = '0% (0/0)';
-                document.getElementById('currentTestId').textContent = '0';
-                
-                // 重置结果计数
-                updateResultsCount();
-                
-                logMessage('测试数据已重置', 'info');
-            }
-            
-            function addResultToTable(result) {
-                // 根据事件类型决定更新哪个表格
-                if (result.eventType === 0) {
-                    // 按下结果
-                    const pressTbody = document.getElementById('pressResultsBody');
-                    updateResultTable(pressTbody, result);
-                } else {
-                    // 释放结果
-                    const releaseTbody = document.getElementById('releaseResultsBody');
-                    updateResultTable(releaseTbody, result);
-                }
-            }
-            
-            function updateResultTable(tbody, result) {
-                // 如果当前显示的是"暂无数据"，先清空
-                if (tbody.rows.length === 1 && tbody.rows[0].cells[0].colSpan === 5) {
-                    tbody.innerHTML = '';
-                }
-                
-                // 创建新行
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${result.id}</td>
-                    <td>${result.curDelay}</td>
-                    <td>${result.maxDelay}</td>
-                    <td>${result.minDelay}</td>
-                    <td>${result.avgDelay}</td>
-                `;
-                
-                // 插入到表格顶部（最新的数据显示在最上面）
-                tbody.insertBefore(row, tbody.firstChild);
-                
-                // 限制最多显示50行
-                if (tbody.rows.length > 50) {
-                    tbody.deleteRow(50);
-                }
-            }
-            
-            function updateResultsCount() {
-                const totalCount = testResults.length;
-                document.getElementById('totalResultsCount').textContent = totalCount;
-            }
-            
-            function updateProgress() {
-                const progress = totalTests > 0 ? (currentTestId / totalTests) * 100 : 0;
-                document.getElementById('progressFill').style.width = `${Math.min(progress, 100)}%`;
-                document.getElementById('progressText').textContent = 
-                    `${progress.toFixed(1)}% (${currentTestId}/${totalTests})`;
-            }
-            
-            // ==================== UI更新 ====================
-            function updateUI() {
-                const connectBtn = document.getElementById('connectBtn');
-                const startBtn = document.getElementById('startWithConfigBtn');
-                const stopBtn = document.getElementById('stopTestBtn');
-                
-                connectBtn.disabled = isConnected;
-                startBtn.disabled = !isConnected || isTesting;
-                stopBtn.disabled = !isConnected || !isTesting;
-                
-                // 更新状态指示器
-                const indicator = document.getElementById('statusIndicator');
-                const statusText = document.getElementById('statusText');
-                
-                if (!isConnected) {
-                    indicator.className = 'status-indicator status-disconnected';
-                    statusText.textContent = '未连接';
-                } else if (isTesting) {
-                    indicator.className = 'status-indicator status-testing';
-                    statusText.textContent = '测试中';
-                } else {
-                    indicator.className = 'status-indicator status-connected';
-                    statusText.textContent = '已连接';
-                }
-            }
-            
-            function updateDeviceInfo() {
-                if (device) {
-                    const deviceName = device.productName || '未知设备';
-                    document.getElementById('deviceInfo').textContent = `${deviceName}`;
-                } else {
-                    document.getElementById('deviceInfo').textContent = '未连接设备';
-                }
-            }
-            
-            // ==================== 日志和通知 ====================
-            function logMessage(message, type = 'info') {
-                const time = new Date().toLocaleTimeString('zh-CN', { 
-                    hour12: false,
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit'
-                });
-                
-                console.log(`[${time}] ${message}`);
-            }
-            
-            function debugLog(message, type = 'info') {
-                const debugContent = document.getElementById('debugContent');
-                if (debugContent) {
-                    const time = new Date().toLocaleTimeString('zh-CN', { 
-                        hour12: false,
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit',
-                        fractionalSecondDigits: 3
-                    });
-                    
-                    const entry = document.createElement('div');
-                    entry.className = 'debug-line';
-                    entry.textContent = `[${time}] ${message}`;
-                    debugContent.appendChild(entry);
-                    debugContent.scrollTop = debugContent.scrollHeight;
-                }
-            }
-            
-            function showNotification(message, type = 'info') {
-                const notification = document.getElementById('notification');
-                const text = document.getElementById('notificationText');
-                
-                notification.className = 'notification';
-                notification.classList.add(`notification-${type}`);
-                
-                text.textContent = message;
-                notification.classList.add('show');
-                
-                setTimeout(() => {
-                    notification.classList.remove('show');
-                }, 2000);
-            }
-            
-            // ==================== 辅助函数 ====================
-            function bytesToHex(bytes) {
-                return Array.from(bytes.slice(0, 32))
-                    .map(b => b.toString(16).padStart(2, '0'))
-                    .join(' ');
-            }
-        </script>
-    </div>
+            document.getElementById('startWithConfigBtn').disabled = !isConnected || isTesting || pendingStart;
+            document.getElementById('stopTestBtn').disabled = !isConnected || !isTesting;
+            const indicator=document.getElementById('statusIndicator'), statusText=document.getElementById('statusText');
+            if(!isConnected){ indicator.className='status-indicator status-disconnected'; statusText.textContent='未连接'; }
+            else if(isTesting){ indicator.className='status-indicator status-testing'; statusText.textContent='测试中'; }
+            else{ indicator.className='status-indicator status-connected'; statusText.textContent='已连接'; }
+        }
+        function updateDeviceInfo(){ document.getElementById('deviceInfo').textContent=device?`${device.productName||'未知设备'}`:'未连接设备'; }
+        function logMessage(msg,type){ console.log(`[${new Date().toLocaleTimeString()}] ${msg}`); }
+        function showNotification(msg,type){ let n=document.getElementById('notification'); n.className='notification'; n.classList.add(`notification-${type}`); document.getElementById('notificationText').textContent=msg; n.classList.add('show'); setTimeout(()=>n.classList.remove('show'),2000); }
+    </script>
+</div>
 </body>
 </html>
