@@ -795,36 +795,21 @@
         async function connectDevice(){
             if(!navigator.hid){ alert('浏览器不支持WebHID'); return; }
             try{
-                // 先尝试获取已经授权且可用的设备
-                let existingDevices = await navigator.hid.getDevices();
-                let targetDevice = existingDevices.find(d => d.vendorId === 0x5542 && d.productId === 0x1008);
-                if(targetDevice){
-                    // 如果设备已打开且可用，直接使用
-                    if(!targetDevice.opened){
-                        await targetDevice.open();
-                    }
-                    device = targetDevice;
-                } else {
-                    // 没有已授权设备，弹出选择框
-                    const devices = await navigator.hid.requestDevice({filters:[{vendorId:0x5542,productId:0x1008,usagePage:0xFF60,usage:0x61}]});
-                    if(devices.length === 0) return;
-                    device = devices[0];
-                    if(!device.opened) await device.open();
-                }
-                // 设置监听器
+                const devices=await navigator.hid.requestDevice({filters:[{vendorId:0x5542,productId:0x1008,usagePage:0xFF60,usage:0x61}]});
+                if(devices.length===0) return;
+                device=devices[0];
+                if(!device.opened) await device.open();
                 device.removeEventListener('inputreport', handleInputReport);
                 device.removeEventListener('disconnect', handleDeviceDisconnect);
                 device.addEventListener('inputreport', handleInputReport);
                 device.addEventListener('disconnect', handleDeviceDisconnect);
-                isConnected = true;
+                isConnected=true;
+                lastHeartbeatTime = Date.now();
                 startHealthCheck();
                 updateUI();
                 updateDeviceInfo();
                 showNotification('设备连接成功','success');
-            } catch(e){
-                logMessage(`连接失败: ${e.message}`,'error');
-                showNotification(`连接失败: ${e.message}`,'error');
-            }
+            }catch(e){ logMessage(`连接失败: ${e.message}`,'error'); showNotification(`连接失败: ${e.message}`,'error'); }
         }
         async function sendData(data){
             if(!device||!device.opened) throw new Error('设备未连接');
@@ -834,7 +819,7 @@
                 else if(Array.isArray(data)) buf.set(data.slice(0,PKT_SIZE));
                 await device.sendReport(0,buf);
             } catch(e){
-                // 发送失败可能因为设备断开
+                // 发送数据失败，立即断开
                 handleDeviceDisconnect();
                 throw e;
             }
