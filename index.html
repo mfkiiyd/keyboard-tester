@@ -2,10 +2,10 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>键盘延迟测试系统</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <style>
         :root {
@@ -48,6 +48,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
         }
         
         .header-title {
@@ -67,6 +69,7 @@
             align-items: center;
             gap: 15px;
             font-size: 0.85rem;
+            flex-wrap: wrap;
         }
         
         .device-info {
@@ -222,7 +225,7 @@
         .progress-fill {
             height: 100%;
             background: linear-gradient(90deg, var(--primary), var(--secondary));
-            transition: width 0.3s ease;
+            transition: width 0.2s ease;
             border-radius: 4px;
         }
         
@@ -285,7 +288,7 @@
             flex-direction: column;
             justify-content: space-between;
             gap: 4px;
-            overflow: hidden;
+            overflow-x: auto;
         }
         
         .keyboard-row {
@@ -301,7 +304,7 @@
             border: 1px solid #e9ecef;
             border-radius: 5px;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.2s;
             font-weight: 500;
             text-align: center;
             font-size: 0.85rem;
@@ -681,6 +684,36 @@
         let currentTestId = 0, totalTests = 50, selectedKeycode = 0x04, selectedKeyLabel = "A", keyMode = "specific", testCompleted = false;
         let pendingStart = false, startTimeout = null;
         let healthCheckInterval = null;
+        
+        // ---------- 性能优化: 图表更新节流 ----------
+        let chartUpdatePending = false;
+        let chartUpdateRafId = null;
+        
+        function scheduleChartUpdate() {
+            if (chartUpdatePending) return;
+            chartUpdatePending = true;
+            chartUpdateRafId = requestAnimationFrame(() => {
+                try {
+                    if (pressChart && pressChart.data) {
+                        pressChart.update('none');  // 无动画更新，大幅提升性能
+                    }
+                    if (releaseChart && releaseChart.data) {
+                        releaseChart.update('none');
+                    }
+                } catch(e) { console.warn("图表更新异常", e); }
+                chartUpdatePending = false;
+                chartUpdateRafId = null;
+            });
+        }
+        
+        function cancelPendingChartUpdate() {
+            if (chartUpdateRafId) {
+                cancelAnimationFrame(chartUpdateRafId);
+                chartUpdateRafId = null;
+            }
+            chartUpdatePending = false;
+        }
+        
         const SYNC_BYTE = 0x5A, PKT_SIZE = 64;
         const CMD_START_WITH_CONFIG = 0x08, CMD_TEST_STOP = 0x03;
         const EVENT_TRIGGER_STAT = 0x14, EVENT_STATUS_REPORT = 0x12;
@@ -693,10 +726,13 @@
             [{code:0xE2,label:"Ctrl",class:"wide"},{code:0xE3,label:"Win",class:"wide"},{code:0xE0,label:"Alt",class:"wide"},{code:0x2C,label:"Space",class:"xxx-wide"},{code:0xE6,label:"Alt",class:"wide"},{code:0xE7,label:"Win",class:"wide"},{code:0x65,label:"Menu",class:"wide"},{code:0xE4,label:"Ctrl",class:"wide"}]
         ];
         document.addEventListener('DOMContentLoaded',()=>{ initCharts(); initKeyboard(); initEventListeners(); updateUI(); updateRelayPinState(); updateKeyboardMode(); });
+        
         function initCharts(){
-            pressChart = new Chart(document.getElementById('pressChart'),{type:'line',data:{labels:[],datasets:[{label:'按下延迟 (us)',data:[],borderColor:'#3a86ff',backgroundColor:'rgba(58,134,255,0.1)',borderWidth:2,fill:true,tension:0.2,pointRadius:2}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true,title:{display:true,text:'延迟 (us)'}},x:{title:{display:true,text:'测试序号'}}},plugins:{legend:{display:false}}}});
-            releaseChart = new Chart(document.getElementById('releaseChart'),{type:'line',data:{labels:[],datasets:[{label:'释放延迟 (us)',data:[],borderColor:'#06d6a0',backgroundColor:'rgba(6,214,160,0.1)',borderWidth:2,fill:true,tension:0.2,pointRadius:2}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true,title:{display:true,text:'延迟 (us)'}},x:{title:{display:true,text:'测试序号'}}},plugins:{legend:{display:false}}}});
+            // 禁用动画以提升高频刷新性能
+            pressChart = new Chart(document.getElementById('pressChart'),{type:'line',data:{labels:[],datasets:[{label:'按下延迟 (us)',data:[],borderColor:'#3a86ff',backgroundColor:'rgba(58,134,255,0.1)',borderWidth:2,fill:true,tension:0.2,pointRadius:2}]},options:{responsive:true,maintainAspectRatio:false,animation:false,scales:{y:{beginAtZero:true,title:{display:true,text:'延迟 (us)'}},x:{title:{display:true,text:'测试序号'}}},plugins:{legend:{display:false}}}});
+            releaseChart = new Chart(document.getElementById('releaseChart'),{type:'line',data:{labels:[],datasets:[{label:'释放延迟 (us)',data:[],borderColor:'#06d6a0',backgroundColor:'rgba(6,214,160,0.1)',borderWidth:2,fill:true,tension:0.2,pointRadius:2}]},options:{responsive:true,maintainAspectRatio:false,animation:false,scales:{y:{beginAtZero:true,title:{display:true,text:'延迟 (us)'}},x:{title:{display:true,text:'测试序号'}}},plugins:{legend:{display:false}}}});
         }
+        
         function initKeyboard(){
             const container=document.getElementById('keyboardContainer');
             container.innerHTML='';
@@ -714,6 +750,7 @@
                 container.appendChild(row);
             });
         }
+        
         function initEventListeners(){
             document.getElementById('connectBtn').addEventListener('click',connectDevice);
             document.getElementById('startWithConfigBtn').addEventListener('click',startWithConfig);
@@ -723,6 +760,7 @@
             document.getElementById('relayPin').addEventListener('change',updateRelayPinState);
             document.querySelectorAll('input[name="keyMode"]').forEach(radio=>radio.addEventListener('change',function(){ keyMode=this.value; updateKeyboardMode(); }));
         }
+        
         function updateRelayPinState(){
             const pin=parseInt(document.getElementById('relayPin').value);
             const sel=document.getElementById('activeLevel');
@@ -730,6 +768,7 @@
             if(pin===1){ sel.disabled=false; hint.innerHTML='<i class="fas fa-info-circle"></i> 磁轴可配置有效电平'; }
             else{ sel.disabled=true; sel.value='1'; hint.innerHTML=pin===0?'<i class="fas fa-info-circle"></i> 机械轴固定高电平有效':'<i class="fas fa-info-circle"></i> 电感固定高电平有效'; }
         }
+        
         function updateKeyboardMode(){
             const btns=document.querySelectorAll('.key-btn');
             const specific=keyMode==='specific';
@@ -740,7 +779,7 @@
             if(specific){ if(!document.querySelector('.key-btn.active')){ const def=document.querySelector(`.key-btn[data-code="${selectedKeycode}"]`); if(def) def.classList.add('active'); } selectedKeycode=parseInt(document.querySelector('.key-btn.active')?.dataset.code||0x04); selectedKeyLabel=document.querySelector('.key-btn.active')?.textContent||'A'; }
             else{ selectedKeycode=0; selectedKeyLabel='任意按键'; }
         }
-        // 设备断开处理（统一入口）
+        
         function handleDeviceDisconnect(){
             if(!isConnected) return;
             logMessage('设备已断开连接','warning');
@@ -753,45 +792,26 @@
             isConnected = false;
             isTesting = false;
             testCompleted = false;
-            if(pendingStart){
-                clearTimeout(startTimeout);
-                pendingStart = false;
-            }
-            if(healthCheckInterval){
-                clearInterval(healthCheckInterval);
-                healthCheckInterval = null;
-            }
+            if(pendingStart){ clearTimeout(startTimeout); pendingStart = false; }
+            if(healthCheckInterval){ clearInterval(healthCheckInterval); healthCheckInterval = null; }
             updateUI();
             document.getElementById('startWithConfigBtn').disabled = true;
             document.getElementById('stopTestBtn').disabled = true;
         }
-        // 健康检查定时器（每2秒被动检测，不发送任何数据）
+        
         function startHealthCheck(){
             if(healthCheckInterval) clearInterval(healthCheckInterval);
             healthCheckInterval = setInterval(async ()=>{
-                if(!isConnected || !device){
-                    if(device) handleDeviceDisconnect();
-                    return;
-                }
-                // 检查 device.opened
-                if(!device.opened){
-                    handleDeviceDisconnect();
-                    return;
-                }
-                // 检查设备是否仍在授权列表中
+                if(!isConnected || !device){ if(device) handleDeviceDisconnect(); return; }
+                if(!device.opened){ handleDeviceDisconnect(); return; }
                 try{
                     const devices = await navigator.hid.getDevices();
                     const stillExists = devices.some(d => d === device);
-                    if(!stillExists){
-                        handleDeviceDisconnect();
-                        return;
-                    }
-                } catch(e){
-                    handleDeviceDisconnect();
-                }
+                    if(!stillExists) handleDeviceDisconnect();
+                } catch(e){ handleDeviceDisconnect(); }
             }, 2000);
         }
-        // 智能连接：优先使用已授权设备，无需弹出选择框；否则弹出选择框
+        
         async function connectDevice(){
             if(!navigator.hid){ alert('浏览器不支持WebHID'); return; }
             try{
@@ -804,13 +824,13 @@
                 device.addEventListener('inputreport', handleInputReport);
                 device.addEventListener('disconnect', handleDeviceDisconnect);
                 isConnected=true;
-                lastHeartbeatTime = Date.now();
                 startHealthCheck();
                 updateUI();
                 updateDeviceInfo();
                 showNotification('设备连接成功','success');
             }catch(e){ logMessage(`连接失败: ${e.message}`,'error'); showNotification(`连接失败: ${e.message}`,'error'); }
         }
+        
         async function sendData(data){
             if(!device||!device.opened) throw new Error('设备未连接');
             try{
@@ -818,16 +838,14 @@
                 if(data instanceof Uint8Array) buf.set(data.slice(0,PKT_SIZE));
                 else if(Array.isArray(data)) buf.set(data.slice(0,PKT_SIZE));
                 await device.sendReport(0,buf);
-            } catch(e){
-                // 发送数据失败，立即断开
-                handleDeviceDisconnect();
-                throw e;
-            }
+            } catch(e){ handleDeviceDisconnect(); throw e; }
         }
+        
         function readUint16LE(d,o){ return d[o]|(d[o+1]<<8); }
         function readUint32LE(d,o){ return (d[o]|(d[o+1]<<8)|(d[o+2]<<16)|(d[o+3]<<24))>>>0; }
         function writeUint16LE(d,o,v){ d[o]=v&0xFF; d[o+1]=(v>>8)&0xFF; }
         function writeUint32LE(d,o,v){ d[o]=v&0xFF; d[o+1]=(v>>8)&0xFF; d[o+2]=(v>>16)&0xFF; d[o+3]=(v>>24)&0xFF; }
+        
         function handleInputReport(event){
             const data=new Uint8Array(event.data.buffer);
             if(data.length>=8 && data[0]===SYNC_BYTE){
@@ -835,22 +853,16 @@
                 else if(data[1]===EVENT_STATUS_REPORT) processStatusReport(data);
             }
         }
+        
         function processStatusReport(data){
             if(data.length<24) return;
             const testState=data[9];
             const newTesting = (testState===1);
-            if(isTesting !== newTesting){
-                isTesting = newTesting;
-                updateUI();
-                if(!isTesting && pendingStart){
-                    if(startTimeout) clearTimeout(startTimeout);
-                    pendingStart=false;
-                    showNotification('设备已停止测试','info');
-                }
-            }
+            if(isTesting !== newTesting){ isTesting = newTesting; updateUI(); }
             if(testState===1) testCompleted=false;
             else testCompleted=true;
         }
+        
         function processTriggerStat(data){
             if(data.length<32) return;
             const testId=readUint16LE(data,8);
@@ -860,15 +872,8 @@
             const maxDelay=readUint32LE(data,16);
             const minDelay=readUint32LE(data,20);
             const avgDelay=readUint32LE(data,24);
-            if(pendingStart){
-                if(startTimeout) clearTimeout(startTimeout);
-                pendingStart=false;
-                isTesting=true;
-                updateUI();
-                showNotification('测试已启动','success');
-            }
+            if(pendingStart){ if(startTimeout) clearTimeout(startTimeout); pendingStart=false; isTesting=true; updateUI(); showNotification('测试已启动','success'); }
             if(testId>totalTests && !testCompleted){ testCompleted=true; isTesting=false; updateUI(); logMessage('测试完成，自动停止','info'); return; }
-            if(testCompleted && testId>totalTests) return;
             currentTestId=testId;
             document.getElementById('currentTestId').textContent=testId;
             let keyLabel=keycode===0?'任意按键':(()=>{ for(let r of keyboardLayout) for(let k of r) if(k.code===keycode) return k.label; return '未知'; })();
@@ -879,20 +884,23 @@
                 document.getElementById('pressCount').textContent=parseInt(document.getElementById('pressCount').textContent)+1;
                 pressChart.data.labels.push(testId.toString()); pressChart.data.datasets[0].data.push(curDelay);
                 if(pressChart.data.labels.length>100){ pressChart.data.labels.shift(); pressChart.data.datasets[0].data.shift(); }
-                pressChart.update(); document.getElementById('pressChartInfo').textContent=`显示${pressChart.data.labels.length}个数据点`;
+                document.getElementById('pressChartInfo').textContent=`显示${pressChart.data.labels.length}个数据点`;
             }else{
                 document.getElementById('releaseMax').textContent=maxDelay; document.getElementById('releaseMin').textContent=minDelay; document.getElementById('releaseAvg').textContent=avgDelay;
                 document.getElementById('releaseCount').textContent=parseInt(document.getElementById('releaseCount').textContent)+1;
                 releaseChart.data.labels.push(testId.toString()); releaseChart.data.datasets[0].data.push(curDelay);
                 if(releaseChart.data.labels.length>100){ releaseChart.data.labels.shift(); releaseChart.data.datasets[0].data.shift(); }
-                releaseChart.update(); document.getElementById('releaseChartInfo').textContent=`显示${releaseChart.data.labels.length}个数据点`;
+                document.getElementById('releaseChartInfo').textContent=`显示${releaseChart.data.labels.length}个数据点`;
             }
             addResultToTable(result);
             updateProgress();
             updateResultsCount();
             if(currentTestId>=totalTests && !testCompleted){ testCompleted=true; isTesting=false; updateUI(); showNotification('测试已完成','success'); }
-            logMessage(`测试 #${testId}: ${result.eventName}, 按键 ${keyLabel}, 当前延迟: ${curDelay}us`,'info');
+            // 关键优化：使用节流更新图表，避免高频重绘导致曲线消失
+            scheduleChartUpdate();
+            logMessage(`测试 #${testId}: ${result.eventName}, 按键 ${keyLabel}, 延迟: ${curDelay}us`,'info');
         }
+        
         async function startWithConfig(){
             if(!device || pendingStart) return;
             try{
@@ -915,18 +923,11 @@
                 pendingStart=true;
                 document.getElementById('startWithConfigBtn').disabled=true;
                 if(startTimeout) clearTimeout(startTimeout);
-                startTimeout=setTimeout(()=>{
-                    if(pendingStart){
-                        pendingStart=false;
-                        document.getElementById('startWithConfigBtn').disabled=!isConnected||isTesting;
-                        showNotification('设备未响应，请检查连接','error');
-                        logMessage('启动超时：未收到设备响应','error');
-                    }
-                },3000);
-                logMessage(`发送启动命令，等待设备响应...`,'info');
-                showNotification('正在启动...','info');
+                startTimeout=setTimeout(()=>{ if(pendingStart){ pendingStart=false; document.getElementById('startWithConfigBtn').disabled=!isConnected||isTesting; showNotification('设备未响应','error'); } },3000);
+                logMessage(`发送启动命令，等待响应...`,'info');
             }catch(e){ logMessage(`启动失败: ${e.message}`,'error'); showNotification(`启动失败: ${e.message}`,'error'); }
         }
+        
         async function stopTest(){
             if(!device) return;
             try{
@@ -935,12 +936,11 @@
                 writeUint32LE(data,4,Date.now()); data[8]=0;
                 await sendData(data);
                 if(pendingStart){ clearTimeout(startTimeout); pendingStart=false; }
-                isTesting=false;
-                testCompleted=true;
-                updateUI();
+                isTesting=false; testCompleted=true; updateUI();
                 showNotification('测试已停止','info');
             }catch(e){ logMessage(`停止失败: ${e.message}`,'error'); }
         }
+        
         function exportToExcel(){
             try{
                 const wb=XLSX.utils.book_new();
@@ -956,18 +956,22 @@
                 showNotification('导出成功','success');
             }catch(e){ logMessage(`导出失败: ${e.message}`,'error'); }
         }
+        
         function resetTestData(){
+            cancelPendingChartUpdate();
             testResults=[]; currentTestId=0; testCompleted=false;
             document.getElementById('pressMax').textContent='0'; document.getElementById('pressMin').textContent='0'; document.getElementById('pressAvg').textContent='0'; document.getElementById('pressCount').textContent='0';
             document.getElementById('releaseMax').textContent='0'; document.getElementById('releaseMin').textContent='0'; document.getElementById('releaseAvg').textContent='0'; document.getElementById('releaseCount').textContent='0';
-            pressChart.data.labels=[]; pressChart.data.datasets[0].data=[]; pressChart.update();
-            releaseChart.data.labels=[]; releaseChart.data.datasets[0].data=[]; releaseChart.update();
+            pressChart.data.labels=[]; pressChart.data.datasets[0].data=[]; 
+            releaseChart.data.labels=[]; releaseChart.data.datasets[0].data=[];
+            pressChart.update('none'); releaseChart.update('none');
             document.getElementById('pressChartInfo').textContent='显示0个数据点'; document.getElementById('releaseChartInfo').textContent='显示0个数据点';
             document.getElementById('pressResultsBody').innerHTML='<tr><td colspan="5" style="text-align:center; color:var(--gray);">暂无按下数据</td></tr>';
             document.getElementById('releaseResultsBody').innerHTML='<tr><td colspan="5" style="text-align:center; color:var(--gray);">暂无释放数据</td></tr>';
             document.getElementById('progressFill').style.width='0%'; document.getElementById('progressText').textContent='0% (0/0)'; document.getElementById('currentTestId').textContent='0';
             updateResultsCount();
         }
+        
         function addResultToTable(result){
             const tbody=result.eventType===0?document.getElementById('pressResultsBody'):document.getElementById('releaseResultsBody');
             if(tbody.rows.length===1 && tbody.rows[0].cells[0].colSpan===5) tbody.innerHTML='';
@@ -979,16 +983,12 @@
             row.insertCell(4).textContent=result.avgDelay;
             if(tbody.rows.length>50) tbody.deleteRow(50);
         }
+        
         function updateResultsCount(){ document.getElementById('totalResultsCount').textContent=testResults.length; }
         function updateProgress(){ let p=totalTests>0?(currentTestId/totalTests)*100:0; document.getElementById('progressFill').style.width=`${Math.min(p,100)}%`; document.getElementById('progressText').textContent=`${p.toFixed(1)}% (${currentTestId}/${totalTests})`; }
         function updateUI(){
-            const connectBtn = document.getElementById('connectBtn');
-            connectBtn.disabled = isConnected;
-            if(isConnected){
-                connectBtn.innerHTML = '<i class="fas fa-plug"></i> 已连接';
-            } else {
-                connectBtn.innerHTML = '<i class="fas fa-plug"></i> 连接设备';
-            }
+            document.getElementById('connectBtn').disabled = isConnected;
+            document.getElementById('connectBtn').innerHTML = isConnected ? '<i class="fas fa-plug"></i> 已连接' : '<i class="fas fa-plug"></i> 连接设备';
             document.getElementById('startWithConfigBtn').disabled = !isConnected || isTesting || pendingStart;
             document.getElementById('stopTestBtn').disabled = !isConnected || !isTesting;
             const indicator=document.getElementById('statusIndicator'), statusText=document.getElementById('statusText');
@@ -998,7 +998,7 @@
         }
         function updateDeviceInfo(){ document.getElementById('deviceInfo').textContent=device?`${device.productName||'未知设备'}`:'未连接设备'; }
         function logMessage(msg,type){ console.log(`[${new Date().toLocaleTimeString()}] ${msg}`); }
-        function showNotification(msg,type){ let n=document.getElementById('notification'); n.className='notification'; n.classList.add(`notification-${type}`); document.getElementById('notificationText').textContent=msg; n.classList.add('show'); setTimeout(()=>n.classList.remove('show'),2000); }
+        function showNotification(msg,type){ let n=document.getElementById('notification'); n.className='notification'; document.getElementById('notificationText').textContent=msg; n.classList.add('show'); setTimeout(()=>n.classList.remove('show'),2000); }
     </script>
 </div>
 </body>
