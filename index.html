@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>键盘延迟测试系统</title>
+    <!-- 使用用户提供的 icon.ico 作为网站 favicon（浏览器标签页图标） -->
+    <link rel="icon" type="image/x-icon" href="icon.ico">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
@@ -58,10 +60,28 @@
             gap: 10px;
         }
         
+        /* 自定义图标样式，保证与文字对齐且大小协调 */
+        .custom-header-icon {
+            height: 32px;
+            width: auto;
+            vertical-align: middle;
+            display: inline-block;
+        }
+        
+        .custom-card-icon {
+            height: 20px;
+            width: auto;
+            vertical-align: middle;
+            margin-right: 4px;
+        }
+        
         .header h1 {
             color: var(--dark);
             font-size: 1.6rem;
             margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         
         .header-right {
@@ -615,7 +635,10 @@
 <body>
 <div class="container">
     <div class="header">
-        <div class="header-title"><h1><i class="fas fa-keyboard"></i> 键盘延迟测试系统</h1></div>
+        <div class="header-title"><h1>
+                <!-- 替换原来的键盘图标为用户提供的 icon.ico -->
+                <img src="icon.ico" alt="图标" class="custom-header-icon" onerror="this.onerror=null; this.style.display='none'; this.nextSibling?.style.display='inline';"><span> 键盘延迟测试系统</span>
+            </h1></div>
         <div class="header-right">
             <div class="device-info"><div>状态: <span id="statusText">未连接</span> <span class="status-indicator" id="statusIndicator"></span></div><div id="deviceInfo">未连接设备</div></div>
             <div class="connection-buttons">
